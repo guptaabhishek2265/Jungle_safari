@@ -6,6 +6,7 @@ const path = require("path");
 const http = require("http");
 const socketIo = require("socket.io");
 const eventEmitter = require("./utils/eventEmitter");
+const connectToDatabase = require("./utils/connectToDatabase");
 
 // Load environment variables
 dotenv.config();
@@ -120,6 +121,19 @@ const suppliersRoutes = require("./routes/suppliers");
 const purchaseOrderRoutes = require("./routes/purchaseOrders");
 const ordersRoutes = require("./routes/orders");
 
+app.use(async (req, res, next) => {
+  try {
+    await connectToDatabase();
+    next();
+  } catch (error) {
+    console.error("Failed to connect to MongoDB", error);
+    res.status(500).json({
+      message: "Database connection failed",
+      error: error.message,
+    });
+  }
+});
+
 // Use routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -145,26 +159,19 @@ if (process.env.NODE_ENV === "production") {
   });
 }
 
-// Connect to MongoDB
 const PORT = process.env.PORT || 5000;
 const isVercel = Boolean(process.env.VERCEL);
-const MONGO_URI =
-  process.env.MONGO_URI ||
-  "mongodb+srv://test-yt:2QLGZiCAG0mkLhRS@cluster0.qyubw.mongodb.net/jungle_safari_inventory";
 
-mongoose
-  .connect(MONGO_URI)
-  .then(() => {
-    console.log("Connected to MongoDB");
-
-    if (!isVercel) {
+if (!isVercel) {
+  connectToDatabase()
+    .then(() => {
       server.listen(PORT, () => {
         console.log(`Server running on port ${PORT}`);
       });
-    }
-  })
-  .catch((err) => {
-    console.error("Failed to connect to MongoDB", err);
-  });
+    })
+    .catch((err) => {
+      console.error("Failed to connect to MongoDB", err);
+    });
+}
 
 module.exports = app;
