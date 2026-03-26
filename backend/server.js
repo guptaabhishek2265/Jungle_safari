@@ -147,6 +147,7 @@ if (process.env.NODE_ENV === "production") {
 
 // Connect to MongoDB
 const PORT = process.env.PORT || 5000;
+const isVercel = Boolean(process.env.VERCEL);
 const MONGO_URI =
   process.env.MONGO_URI ||
   "mongodb+srv://test-yt:2QLGZiCAG0mkLhRS@cluster0.qyubw.mongodb.net/jungle_safari_inventory";
@@ -155,9 +156,12 @@ mongoose
   .connect(MONGO_URI)
   .then(() => {
     console.log("Connected to MongoDB");
-    server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+
+    if (!isVercel) {
+      server.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+      });
+    }
   })
   .catch((err) => {
     console.error("Failed to connect to MongoDB", err);
