@@ -13,6 +13,9 @@ dotenv.config();
 // Initialize express app
 const app = express();
 const server = http.createServer(app);
+const isAllowedVercelOrigin = (origin = "") =>
+  /^https:\/\/jungle-safari(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(origin);
+
 const io = socketIo(server, {
   cors: {
     origin: function (origin, callback) {
@@ -22,7 +25,12 @@ const io = socketIo(server, {
         "https://jungle-safari-souvenir-shop-o67c.vercel.app"
       ];
 
-      if (!origin || allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+      if (
+        !origin ||
+        allowedOrigins.indexOf(origin) !== -1 ||
+        isAllowedVercelOrigin(origin) ||
+        process.env.NODE_ENV === "development"
+      ) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -84,13 +92,8 @@ app.use(cors({
       return callback(null, true);
     }
 
-    // Allow your specific Vercel frontend
-    if (origin === 'https://jungle-safari-souvenir-shop-o67c.vercel.app') {
-      return callback(null, true);
-    }
-
-    // Allow any jungle-safari-souvenir-shop Vercel deployment
-    if (origin.includes('jungle-safari-souvenir-shop') && origin.includes('vercel.app')) {
+    // Allow deployed Jungle Safari frontends on Vercel
+    if (isAllowedVercelOrigin(origin)) {
       return callback(null, true);
     }
 
