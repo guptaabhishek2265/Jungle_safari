@@ -37,6 +37,7 @@ import {
   Warning as WarningIcon,
   Lock as LockIcon,
 } from "@mui/icons-material";
+import { useAuth } from "../../context/AuthContext";
 
 // Width of the drawer
 const drawerWidth = 280;
@@ -46,9 +47,7 @@ const Layout = () => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-
-  // User state (would normally be from auth context)
-  const [user, setUser] = useState(null);
+  const { user, logout } = useAuth();
 
   // State for mobile drawer
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -57,9 +56,7 @@ const Layout = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const openUserMenu = Boolean(anchorEl);
 
-  // Check if the user is authenticated
   useEffect(() => {
-    // In a real app, this would check for a valid token
     const token = localStorage.getItem("token");
     if (
       !token &&
@@ -67,15 +64,6 @@ const Layout = () => {
       !location.pathname.includes("/register")
     ) {
       navigate("/login");
-    } else if (token) {
-      // Decode token and set user
-      // For demo, just set a mock user
-      const userData = JSON.parse(localStorage.getItem("user")) || {
-        name: "Demo User",
-        email: "demo@example.com",
-        role: "inventory_manager",
-      };
-      setUser(userData);
     }
   }, [navigate, location]);
 
@@ -96,8 +84,7 @@ const Layout = () => {
 
   // Handle logout
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    logout();
     navigate("/login");
   };
 

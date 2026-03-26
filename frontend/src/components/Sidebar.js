@@ -19,19 +19,21 @@ import {
   Person as CustomerIcon,
   Settings as SettingsIcon,
 } from "@mui/icons-material";
+import { useAuth } from "../context/AuthContext";
 
 const drawerWidth = 240;
 
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const user = JSON.parse(localStorage.getItem("user")) || { role: "customer" };
+  const { user } = useAuth();
+  const currentUser = user || { role: "customer" };
 
   const getNavItems = () => {
     const items = [];
 
     // Everyone can see their role-specific dashboard
-    if (user.role === "admin") {
+    if (currentUser.role === "admin") {
       items.push(
         { text: "Admin Dashboard", icon: <AdminIcon />, path: "/admin" },
         { text: "Inventory", icon: <InventoryIcon />, path: "/inventory" },
@@ -42,19 +44,19 @@ const Sidebar = () => {
           path: "/customer",
         }
       );
-    } else if (user.role === "inventory_manager") {
+    } else if (currentUser.role === "inventory_manager") {
       items.push({
         text: "Inventory Dashboard",
         icon: <InventoryIcon />,
         path: "/inventory",
       });
-    } else if (user.role === "sales") {
+    } else if (currentUser.role === "sales") {
       items.push({
         text: "Sales Dashboard",
         icon: <SalesIcon />,
         path: "/sales",
       });
-    } else if (user.role === "customer") {
+    } else if (currentUser.role === "customer") {
       items.push({
         text: "Customer Dashboard",
         icon: <CustomerIcon />,

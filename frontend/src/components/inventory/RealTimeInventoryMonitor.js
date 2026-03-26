@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useContext } from "react";
 import {
   Box,
   Paper,
@@ -20,39 +20,8 @@ import {
 import { InventoryContext } from "../../pages/inventory/Dashboard";
 
 const RealTimeInventoryMonitor = () => {
-  const { products } = useContext(InventoryContext);
-  const [inventoryUpdates, setInventoryUpdates] = useState([]);
+  const { inventoryUpdates = [] } = useContext(InventoryContext);
   const [expanded, setExpanded] = useState(true);
-
-  // Listen for real inventory updates rather than generating random ones
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key === "inventoryUpdate") {
-        const updateData = JSON.parse(e.newValue);
-        const product = products.find((p) => p.id === updateData.id);
-
-        if (product) {
-          const newUpdate = {
-            id: Date.now(),
-            productId: product.id,
-            productName: product.name,
-            quantity: updateData.quantity,
-            timestamp: new Date(),
-            type: "sale",
-          };
-
-          setInventoryUpdates((prev) => {
-            const updated = [newUpdate, ...prev];
-            // Keep only the latest 10 updates
-            return updated.slice(0, 10);
-          });
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, [products]);
 
   // Format time for display
   const formatTime = (date) => {
@@ -118,8 +87,10 @@ const RealTimeInventoryMonitor = () => {
                           {update.productName}
                         </Typography>
                         <Chip
-                          label={`-${update.quantity}`}
-                          color="primary"
+                          label={`${
+                            update.type === "restock" ? "+" : "-"
+                          }${update.quantity}`}
+                          color={update.type === "restock" ? "success" : "primary"}
                           size="small"
                           sx={{ ml: 1 }}
                         />
@@ -129,6 +100,8 @@ const RealTimeInventoryMonitor = () => {
                       <Typography variant="body2" color="text.secondary">
                         {update.type === "sale"
                           ? "Sale completed"
+                          : update.type === "restock"
+                          ? "Stock replenished"
                           : "Stock updated"}{" "}
                         at {formatTime(update.timestamp)}
                       </Typography>

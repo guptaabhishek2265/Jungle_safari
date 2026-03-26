@@ -21,8 +21,11 @@ import {
   Visibility,
   VisibilityOff,
 } from '@mui/icons-material';
+import { useAuth } from '../context/AuthContext';
+import api from '../utils/api';
 
 const Settings = () => {
+  const { user: authUser, updateUserProfile } = useAuth();
   const [user, setUser] = useState({
     name: '',
     email: '',
@@ -48,19 +51,21 @@ const Settings = () => {
     message: '',
     severity: 'success',
   });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    // Load user data from localStorage
-    const userData = JSON.parse(localStorage.getItem('user'));
+    const userData = authUser;
     if (userData) {
       setUser(userData);
       setFormData({
-        ...formData,
         name: userData.name || '',
         email: userData.email || '',
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
       });
     }
-  }, []);
+  }, [authUser]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -77,10 +82,9 @@ const Settings = () => {
     });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form
     if (formData.newPassword !== formData.confirmPassword) {
       setAlert({
         open: true,
@@ -89,22 +93,40 @@ const Settings = () => {
       });
       return;
     }
-    
-    // In a real app, you would send this data to an API
-    // For now, we'll just update localStorage
-    const updatedUser = {
-      ...user,
-      name: formData.name,
-      email: formData.email,
-    };
-    
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-    
-    setAlert({
-      open: true,
-      message: 'Profile updated successfully!',
-      severity: 'success',
-    });
+
+    try {
+      setSaving(true);
+      const response = await api.put('/api/users/me', {
+        name: formData.name,
+        email: formData.email,
+        currentPassword: formData.currentPassword || undefined,
+        newPassword: formData.newPassword || undefined,
+      });
+
+      const updatedUser = response.data;
+      setUser(updatedUser);
+      updateUserProfile(updatedUser);
+      setFormData((prev) => ({
+        ...prev,
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      }));
+
+      setAlert({
+        open: true,
+        message: 'Profile updated successfully!',
+        severity: 'success',
+      });
+    } catch (error) {
+      setAlert({
+        open: true,
+        message: error.response?.data?.message || 'Failed to update profile.',
+        severity: 'error',
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCloseAlert = () => {
@@ -262,9 +284,10 @@ const Settings = () => {
                 variant="contained"
                 color="primary"
                 startIcon={<SaveIcon />}
+                disabled={saving}
                 sx={{ mr: 1 }}
               >
-                Save Changes
+                {saving ? 'Saving...' : 'Save Changes'}
               </Button>
               <Button variant="outlined">
                 Cancel

@@ -10,8 +10,6 @@ import {
   CardContent,
   CardMedia,
   CardActions,
-  IconButton,
-  Badge,
   Dialog,
   DialogContent,
   DialogActions,
@@ -44,9 +42,9 @@ import {
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { InventoryContext } from "../inventory/Dashboard";
-import { useTheme } from "../../context/ThemeContext"; // Import the global theme hook
+import { useAuth } from "../../context/AuthContext";
+import api from "../../utils/api";
 
-// Custom styled components for dark background effect
 const DarkOverlay = ({ children }) => (
   <Box
     sx={{
@@ -72,235 +70,139 @@ const DarkOverlay = ({ children }) => (
   </Box>
 );
 
+const normalizeOrder = (order) => ({
+  id: order._id || order.id,
+  date: order.date || order.createdAt || new Date().toISOString(),
+  products: (order.items || order.products || []).map((item) => ({
+    id: item._id || item.id,
+    name: item.name,
+    price: Number(item.price || 0),
+    quantity: Number(item.quantity || 0),
+  })),
+  subtotal: Number(order.subtotal || 0),
+  tax: Number(order.taxAmount || order.tax || 0),
+  total: Number(order.totalAmount || order.total || 0),
+  paymentMethod: order.payment?.method || order.paymentMethod || "card",
+  status: order.status || "completed",
+});
+
+const paymentMethodLabel = (method) => {
+  switch (method) {
+    case "credit-card":
+      return "Credit Card";
+    case "debit-card":
+      return "Debit Card";
+    case "upi":
+      return "UPI";
+    case "cash":
+      return "Cash on Delivery";
+    case "card":
+      return "Card";
+    default:
+      return method;
+  }
+};
+
+const toApiPaymentMethod = (method) => {
+  if (method === "upi") return "upi";
+  if (method === "cash") return "cash";
+  return "card";
+};
+
 const CustomerDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const inventoryContext = useContext(InventoryContext);
-  const { isDarkTheme, toggleTheme } = useTheme(); // Use the global theme
 
-  const [products, setProducts] = useState([]);
+  const products = inventoryContext?.products || [];
+  const loadingProducts = inventoryContext?.loading ?? true;
+
   const [cart, setCart] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(true);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [orderDetails, setOrderDetails] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
   const [orderHistoryLoading, setOrderHistoryLoading] = useState(true);
-  const [activeView, setActiveView] = useState("shop"); // 'shop' or 'orders'
+  const [activeView, setActiveView] = useState("shop");
   const [paymentMethod, setPaymentMethod] = useState("credit-card");
-
-  // Set default active view based on URL
-  useEffect(() => {
-    if (location.pathname.includes("/orders")) {
-      setActiveView("orders");
-    } else {
-      setActiveView("shop");
-    }
-  }, [location]);
-
-  // Calculate order subtotal, tax, and total
-  const calculateSubtotal = () => {
-    return cart.reduce((total, item) => total + item.price * item.quantity, 0);
-  };
-
-  const calculateTax = (subtotal) => {
-    return subtotal * 0.18; // 18% GST
-  };
-
-  const calculateTotal = (subtotal, tax) => {
-    return subtotal + tax;
-  };
-
+  const [submittingOrder, setSubmittingOrder] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [orderTotals, setOrderTotals] = useState({
     subtotal: 0,
     taxAmount: 0,
     totalAmount: 0,
   });
 
-  // Load products and order history on mount
   useEffect(() => {
-    // If inventory context has products, use those
-    if (
-      inventoryContext &&
-      inventoryContext.products &&
-      inventoryContext.products.length > 0
-    ) {
-      setProducts(inventoryContext.products);
-      setLoadingProducts(false);
-    } else {
-      // Use mock products from another file if needed
-      const loadProducts = async () => {
-        setLoadingProducts(true);
-        // Simulate API call
-        setTimeout(() => {
-          // Create mock products if needed
-          const mockProducts = [
-            // ... existing mock products
-          ];
-          setProducts(mockProducts);
+    setActiveView(location.pathname.includes("/orders") ? "orders" : "shop");
+  }, [location.pathname]);
 
-          // Save to localStorage for other components
-          localStorage.setItem(
-            "inventoryProducts",
-            JSON.stringify(mockProducts)
-          );
+  useEffect(() => {
+    const subtotal = cart.reduce(
+      (total, item) => total + item.price * item.quantity,
+      0
+    );
+    const taxAmount = subtotal * 0.18;
+    setOrderTotals({
+      subtotal,
+      taxAmount,
+      totalAmount: subtotal + taxAmount,
+    });
+  }, [cart]);
 
-          setLoadingProducts(false);
-        }, 1000);
-      };
-
-      if (!products.length) {
-        loadProducts();
+  useEffect(() => {
+    const loadOrderHistory = async () => {
+      if (!user?.id && !user?._id) {
+        setOrderHistory([]);
+        setOrderHistoryLoading(false);
+        return;
       }
-    }
 
-    // Fetch order history with better error handling
-    const loadOrderHistory = () => {
-      setOrderHistoryLoading(true);
       try {
-        const storedOrderHistory = localStorage.getItem("customer-orders");
-
-        if (storedOrderHistory) {
-          try {
-            const parsedOrderHistory = JSON.parse(storedOrderHistory);
-            if (Array.isArray(parsedOrderHistory)) {
-              setOrderHistory(parsedOrderHistory);
-            } else {
-              console.error(
-                "Order history is not an array:",
-                parsedOrderHistory
-              );
-              // Create a new empty array for orders
-              localStorage.setItem("customer-orders", JSON.stringify([]));
-              setOrderHistory([]);
-            }
-          } catch (error) {
-            console.error("Error parsing order history:", error);
-            // Create a new empty array for orders
-            localStorage.setItem("customer-orders", JSON.stringify([]));
-            setOrderHistory([]);
-          }
-        } else {
-          // No order history found, initialize with empty array
-          localStorage.setItem("customer-orders", JSON.stringify([]));
-          setOrderHistory([]);
-        }
+        setOrderHistoryLoading(true);
+        const userId = user.id || user._id;
+        const response = await api.get(`/api/orders/user/${userId}`);
+        setOrderHistory((response.data || []).map(normalizeOrder));
+      } catch (error) {
+        console.error("Error loading customer orders:", error);
+        setOrderHistory([]);
+        setErrorMessage(
+          error.response?.data?.msg || "Failed to load your order history."
+        );
       } finally {
         setOrderHistoryLoading(false);
       }
     };
 
     loadOrderHistory();
+  }, [user]);
 
-    // Listen for inventory updates
-    const handleStorageChange = (e) => {
-      if (e.key === "inventoryUpdate") {
-        const update = JSON.parse(e.newValue);
-
-        setProducts((prevProducts) =>
-          prevProducts.map((product) => {
-            if (product.id === update.id) {
-              return {
-                ...product,
-                stock: Math.max(0, product.stock - update.quantity),
-              };
-            }
-            return product;
-          })
-        );
-      } else if (e.key === "newProductAdded") {
-        const newProduct = JSON.parse(e.newValue);
-        setProducts((prevProducts) => [...prevProducts, newProduct]);
-      } else if (e.key === "customer-orders") {
-        // Listen for changes to order history from other tabs
-        try {
-          const updatedOrders = JSON.parse(e.newValue);
-          if (Array.isArray(updatedOrders)) {
-            setOrderHistory(updatedOrders);
-          }
-        } catch (error) {
-          console.error("Error handling order history update:", error);
-        }
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
-  }, [inventoryContext]); // <-- Removed products.length dependency to prevent needless reruns
-
-  // Save order history to localStorage whenever it changes
-  useEffect(() => {
-    if (orderHistory.length > 0) {
-      localStorage.setItem("customer-orders", JSON.stringify(orderHistory));
-    }
-  }, [orderHistory]);
-
-  // Load cart from localStorage
-  useEffect(() => {
-    const storedCart = localStorage.getItem("customer-cart");
-    if (storedCart) {
-      setCart(JSON.parse(storedCart));
-    }
-  }, []);
-
-  // Save cart to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem("customer-cart", JSON.stringify(cart));
-  }, [cart]);
-
-  // Generate an order ID
-  const generateOrderId = () => {
-    const prefix = "ORD";
-    const timestamp = Date.now().toString().slice(-6);
-    const orderId = orderHistory.length + 1;
-    return `${prefix}-${timestamp}-${orderId.toString().padStart(3, "0")}`;
-  };
-
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat("en-IN", {
+  const formatCurrency = (amount) =>
+    new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
     }).format(amount);
-  };
 
-  // Format date
-  const formatDate = (dateString) => {
-    const options = {
+  const formatDate = (dateString) =>
+    new Date(dateString).toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
       hour: "numeric",
       minute: "numeric",
       hour12: true,
-    };
-    return new Date(dateString).toLocaleDateString(undefined, options);
-  };
-
-  // Update order totals whenever cart changes
-  useEffect(() => {
-    const subtotal = calculateSubtotal();
-    const taxAmount = calculateTax(subtotal);
-    const totalAmount = calculateTotal(subtotal, taxAmount);
-
-    setOrderTotals({
-      subtotal,
-      taxAmount,
-      totalAmount,
     });
-  }, [cart]);
 
-  // Add item to cart
   const handleAddToCart = (product) => {
+    setErrorMessage("");
     const existingItem = cart.find((item) => item.id === product.id);
 
     if (existingItem) {
-      // Check if adding one more would exceed the stock
       if (existingItem.quantity + 1 > product.stock) {
-        alert(`Sorry, only ${product.stock} items in stock`);
+        setErrorMessage(`Only ${product.stock} units are available for ${product.name}.`);
         return;
       }
 
-      // Update quantity if product already in cart
       setCart((prevCart) =>
         prevCart.map((item) =>
           item.id === product.id
@@ -308,199 +210,128 @@ const CustomerDashboard = () => {
             : item
         )
       );
-    } else {
-      // Add new product to cart
-      setCart((prevCart) => [...prevCart, { ...product, quantity: 1 }]);
+      return;
     }
+
+    setCart((prevCart) => [...prevCart, { ...product, quantity: 1 }]);
   };
 
-  // Update cart item quantity
   const handleUpdateQuantity = (productId, newQuantity) => {
-    const product = products.find((p) => p.id === productId);
+    const product = products.find((item) => item.id === productId);
+    if (!product) {
+      return;
+    }
 
-    // Validate against available stock
     if (newQuantity > product.stock) {
-      alert(`Sorry, only ${product.stock} items in stock`);
+      setErrorMessage(`Only ${product.stock} units are available for ${product.name}.`);
       return;
     }
 
     if (newQuantity <= 0) {
-      // Remove item if quantity is 0 or negative
       setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
-    } else {
-      // Update quantity
-      setCart((prevCart) =>
-        prevCart.map((item) =>
-          item.id === productId ? { ...item, quantity: newQuantity } : item
-        )
-      );
+      return;
     }
+
+    setCart((prevCart) =>
+      prevCart.map((item) =>
+        item.id === productId ? { ...item, quantity: newQuantity } : item
+      )
+    );
   };
 
-  // Remove item from cart
   const handleRemoveItem = (productId) => {
     setCart((prevCart) => prevCart.filter((item) => item.id !== productId));
   };
 
-  // Handle checkout button click
   const handleCheckout = () => {
     if (cart.length === 0) {
-      alert("Your cart is empty");
+      setErrorMessage("Your cart is empty.");
       return;
     }
+    setErrorMessage("");
     setCheckoutOpen(true);
   };
 
-  // Close checkout dialog
   const handleCloseCheckout = () => {
-    setCheckoutOpen(false);
+    if (!submittingOrder) {
+      setCheckoutOpen(false);
+    }
   };
 
-  // Process payment and create order
   const handleProcessPayment = async (paymentDetails) => {
-    // Create order details
-    const newOrder = {
-      id: generateOrderId(),
-      date: new Date().toISOString(),
-      products: cart.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-      })),
-      subtotal: orderTotals.subtotal,
-      tax: orderTotals.taxAmount,
-      total: orderTotals.totalAmount,
-      paymentMethod: paymentDetails.method,
-      paymentDetails: paymentDetails.details || {},
-      status: "completed",
-    };
-
-    // Update inventory (decrease stock)
-    cart.forEach((item) => {
-      // Update local product stock for display
-      setProducts((prevProducts) =>
-        prevProducts.map((product) => {
-          if (product.id === item.id) {
-            return {
-              ...product,
-              stock: Math.max(0, product.stock - item.quantity),
-            };
-          }
-          return product;
-        })
-      );
-
-      // Trigger inventory update for other components
-      if (inventoryContext && inventoryContext.updateProductStock) {
-        inventoryContext.updateProductStock(item.id, item.quantity);
-      } else {
-        // If context not available, use localStorage
-        const inventoryUpdate = {
-          id: item.id,
-          quantity: item.quantity,
-        };
-        localStorage.setItem(
-          "inventoryUpdate",
-          JSON.stringify(inventoryUpdate)
-        );
-
-        // Trigger storage event
-        const storageEvent = new Event("storage");
-        storageEvent.key = "inventoryUpdate";
-        storageEvent.newValue = JSON.stringify(inventoryUpdate);
-        window.dispatchEvent(storageEvent);
-      }
-    });
-
-    // Update sales data
-    const saleData = {
-      products: cart.map((item) => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-      })),
-      total: orderTotals.totalAmount,
-      paymentMethod: paymentDetails.method,
-      timestamp: new Date().toISOString(),
-      customer: {
-        id: localStorage.getItem("userId") || Date.now().toString(),
-        name: localStorage.getItem("username") || "Customer",
-      },
-    };
-
-    // Save to localStorage for sales dashboard to pick up
-    localStorage.setItem("newSale", JSON.stringify(saleData));
-
-    // Trigger storage event for sales dashboard to update in real-time
-    const saleEvent = new Event("storage");
-    saleEvent.key = "newSale";
-    saleEvent.newValue = JSON.stringify(saleData);
-    window.dispatchEvent(saleEvent);
-
-    // FIXED: More robust order history management
-    // First get existing orders from local state (already in memory)
-    let customerOrders = [...orderHistory];
-
-    // If we don't have any orders in state, try to load from localStorage
-    if (customerOrders.length === 0) {
-      const storedOrders = localStorage.getItem("customer-orders");
-      if (storedOrders) {
-        try {
-          const parsedOrders = JSON.parse(storedOrders);
-          if (Array.isArray(parsedOrders)) {
-            customerOrders = parsedOrders;
-          }
-        } catch (error) {
-          // If parsing error, use empty array
-          console.error("Error loading stored orders:", error);
-        }
-      }
+    if (!user?.email) {
+      setErrorMessage("Please log in again before placing an order.");
+      return;
     }
 
-    // Add the new order to the beginning of the array
-    customerOrders = [newOrder, ...customerOrders];
+    try {
+      setSubmittingOrder(true);
+      setErrorMessage("");
 
-    // Important: Update state first, then localStorage
-    setOrderHistory(customerOrders);
+      const payload = {
+        items: cart.map((item) => ({
+          _id: item._id || item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+        customer: {
+          name: user.name || "Customer",
+          email: user.email,
+          phone: user.phone || "",
+        },
+        subtotal: orderTotals.subtotal,
+        taxAmount: orderTotals.taxAmount,
+        totalAmount: orderTotals.totalAmount,
+        payment: {
+          method: toApiPaymentMethod(paymentDetails.method),
+          transactionId: `TXN-${Date.now()}`,
+          orderId: `ORD-${Date.now()}`,
+          details: paymentDetails.details || {},
+        },
+      };
 
-    // Directly update localStorage to ensure it's saved
-    localStorage.setItem("customer-orders", JSON.stringify(customerOrders));
+      const response = await api.post("/api/orders", payload);
+      const createdOrder = normalizeOrder(response.data);
 
-    // Fire a storage event to notify other tabs
-    const orderStorageEvent = new Event("storage");
-    orderStorageEvent.key = "customer-orders";
-    orderStorageEvent.newValue = JSON.stringify(customerOrders);
-    window.dispatchEvent(orderStorageEvent);
+      setOrderHistory((prevOrders) => [createdOrder, ...prevOrders]);
+      setOrderDetails(createdOrder);
+      setCart([]);
+      setCheckoutOpen(false);
+      setSuccessOpen(true);
 
-    // Set order details for success dialog
-    setOrderDetails(newOrder);
-
-    // Close checkout and show success dialog
-    setCheckoutOpen(false);
-    setSuccessOpen(true);
+      if (inventoryContext?.refreshProducts) {
+        await inventoryContext.refreshProducts();
+      }
+    } catch (error) {
+      console.error("Error creating order:", error);
+      setErrorMessage(
+        error.response?.data?.msg || "Failed to place your order."
+      );
+    } finally {
+      setSubmittingOrder(false);
+    }
   };
 
-  // Handle closing success dialog
   const handleCloseSuccess = () => {
     setSuccessOpen(false);
     setOrderDetails(null);
-    setCart([]);
   };
 
-  // Render product grid
   const renderProductGrid = () => {
     if (loadingProducts) {
       return (
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          height="400px"
-        >
+        <Box display="flex" justifyContent="center" alignItems="center" height="400px">
           <CircularProgress className="custom-spinner" />
         </Box>
+      );
+    }
+
+    if (!products.length) {
+      return (
+        <Alert severity="info">
+          No products are available right now. Add products in inventory to start selling.
+        </Alert>
       );
     }
 
@@ -514,7 +345,7 @@ const CustomerDashboard = () => {
                 height="140"
                 image={
                   product.imageUrl ||
-                  `https://source.unsplash.com/random/300x200?${product.category.toLowerCase()}`
+                  `https://source.unsplash.com/random/300x200?${(product.category || "souvenir").toLowerCase()}`
                 }
                 alt={product.name}
               />
@@ -530,11 +361,7 @@ const CustomerDashboard = () => {
                 <Typography variant="body2" className="text-light" gutterBottom>
                   {product.description || `Quality ${product.category} item`}
                 </Typography>
-                <Box
-                  display="flex"
-                  justifyContent="space-between"
-                  alignItems="center"
-                >
+                <Box display="flex" justifyContent="space-between" alignItems="center">
                   <Typography variant="h6" className="card-price">
                     {formatCurrency(product.price)}
                   </Typography>
@@ -572,188 +399,143 @@ const CustomerDashboard = () => {
     );
   };
 
-  // Render shopping cart
-  const renderCart = () => {
-    return (
-      <Paper
-        elevation={0}
-        variant="outlined"
-        className="cart-paper"
-        sx={{ p: 2 }}
-      >
+  const renderCart = () => (
+    <Paper elevation={0} variant="outlined" className="cart-paper" sx={{ p: 2 }}>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+        <CartIcon sx={{ mr: 1 }} className="tertiary-text" />
+        <Typography variant="h6" className="secondary-text">
+          Shopping Cart{" "}
+          {cart.length > 0 &&
+            `(${cart.length} ${cart.length === 1 ? "item" : "items"})`}
+        </Typography>
+      </Box>
+      <div className="custom-divider"></div>
+
+      {cart.length === 0 ? (
         <Box
+          className="empty-state-container"
           sx={{
             display: "flex",
+            flexDirection: "column",
             alignItems: "center",
-            mb: 2,
+            justifyContent: "center",
+            p: 3,
           }}
         >
-          <CartIcon sx={{ mr: 1 }} className="tertiary-text" />
-          <Typography variant="h6" className="secondary-text">
-            Shopping Cart{" "}
-            {cart.length > 0 &&
-              `(${cart.length} ${cart.length === 1 ? "item" : "items"})`}
+          <CartIcon className="empty-state-icon" />
+          <Typography variant="h6" className="text-light" align="center" gutterBottom>
+            Your cart is empty
+          </Typography>
+          <Typography variant="body2" className="text-light" align="center">
+            Add products to begin shopping
           </Typography>
         </Box>
-        <div className="custom-divider"></div>
+      ) : (
+        <>
+          <List sx={{ mb: 2 }}>
+            {cart.map((item) => (
+              <ListItem
+                key={item.id}
+                className="cart-item"
+                sx={{
+                  border: "1px solid",
+                  borderColor: "divider",
+                  borderRadius: 1,
+                  mb: 1,
+                }}
+              >
+                <Box sx={{ flexGrow: 1 }}>
+                  <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+                    <ListItemText
+                      primary={<span className="text-white">{item.name}</span>}
+                      secondary={
+                        <span className="text-light">
+                          {formatCurrency(item.price)} each
+                        </span>
+                      }
+                    />
+                    <Typography className="primary-text">
+                      {formatCurrency(item.price * item.quantity)}
+                    </Typography>
+                  </Box>
 
-        {cart.length === 0 ? (
-          <Box
-            className="empty-state-container"
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              p: 3,
-            }}
-          >
-            <CartIcon className="empty-state-icon" />
-            <Typography
-              variant="h6"
-              className="text-light"
-              align="center"
-              gutterBottom
-            >
-              Your cart is empty
-            </Typography>
-            <Typography variant="body2" className="text-light" align="center">
-              Add products to begin shopping
-            </Typography>
-          </Box>
-        ) : (
-          <>
-            <List sx={{ mb: 2 }}>
-              {cart.map((item) => (
-                <ListItem
-                  key={item.id}
-                  className="cart-item"
-                  sx={{
-                    border: "1px solid",
-                    borderColor: "divider",
-                    borderRadius: 1,
-                    mb: 1,
-                  }}
-                >
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Box
-                      display="flex"
-                      justifyContent="space-between"
-                      alignItems="flex-start"
-                    >
-                      <ListItemText
-                        primary={
-                          <span className="text-white">{item.name}</span>
-                        }
-                        secondary={
-                          <span className="primary-text">
-                            {formatCurrency(item.price)}
-                          </span>
-                        }
-                      />
-                      <IconButton
-                        edge="end"
-                        aria-label="delete"
-                        onClick={() => handleRemoveItem(item.id)}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </Box>
-                    <Box display="flex" alignItems="center" sx={{ mt: 1 }}>
-                      <IconButton
+                  <Box display="flex" alignItems="center" justifyContent="space-between" mt={1}>
+                    <Box display="flex" alignItems="center">
+                      <Button
                         size="small"
-                        onClick={() =>
-                          handleUpdateQuantity(item.id, item.quantity - 1)
-                        }
+                        onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
                       >
                         <RemoveIcon fontSize="small" />
-                      </IconButton>
+                      </Button>
                       <Typography sx={{ mx: 1 }} className="text-white">
                         {item.quantity}
                       </Typography>
-                      <IconButton
+                      <Button
                         size="small"
-                        onClick={() =>
-                          handleUpdateQuantity(item.id, item.quantity + 1)
-                        }
+                        onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
                       >
                         <AddIcon fontSize="small" />
-                      </IconButton>
-                      <Typography
-                        variant="body2"
-                        className="tertiary-text"
-                        sx={{ ml: 2 }}
-                      >
-                        {formatCurrency(item.price * item.quantity)}
-                      </Typography>
+                      </Button>
                     </Box>
+
+                    <Button color="error" onClick={() => handleRemoveItem(item.id)}>
+                      <DeleteIcon fontSize="small" />
+                    </Button>
                   </Box>
-                </ListItem>
-              ))}
-            </List>
+                </Box>
+              </ListItem>
+            ))}
+          </List>
 
-            <div className="custom-divider"></div>
+          <div className="custom-divider"></div>
 
-            <Box sx={{ mb: 2 }}>
-              <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
-                <Typography variant="body1" className="text-white">
-                  Subtotal
-                </Typography>
-                <Typography variant="body1" className="tertiary-text">
-                  {formatCurrency(orderTotals.subtotal)}
-                </Typography>
-              </Box>
-              <Box display="flex" justifyContent="space-between" sx={{ mb: 1 }}>
-                <Typography variant="body2" className="text-light">
-                  Tax (18% GST)
-                </Typography>
-                <Typography variant="body2" className="text-light">
-                  {formatCurrency(orderTotals.taxAmount)}
-                </Typography>
-              </Box>
-              <Box display="flex" justifyContent="space-between" sx={{ mb: 2 }}>
-                <Typography variant="h6" className="text-white">
-                  Total
-                </Typography>
-                <Typography variant="h6" className="primary-text">
-                  {formatCurrency(orderTotals.totalAmount)}
-                </Typography>
-              </Box>
-
-              <Button
-                variant="contained"
-                color="primary"
-                size="large"
-                fullWidth
-                onClick={handleCheckout}
-                startIcon={<PaymentIcon />}
-                className="primary-button"
-              >
-                Proceed to Checkout
-              </Button>
+          <Box sx={{ mt: 2 }}>
+            <Box display="flex" justifyContent="space-between" mb={1}>
+              <Typography className="text-light">Subtotal</Typography>
+              <Typography className="text-white">
+                {formatCurrency(orderTotals.subtotal)}
+              </Typography>
             </Box>
-          </>
-        )}
-      </Paper>
-    );
-  };
+            <Box display="flex" justifyContent="space-between" mb={1}>
+              <Typography className="text-light">Tax (18% GST)</Typography>
+              <Typography className="text-white">
+                {formatCurrency(orderTotals.taxAmount)}
+              </Typography>
+            </Box>
+            <Box display="flex" justifyContent="space-between" mb={2}>
+              <Typography variant="h6" className="secondary-text">
+                Total
+              </Typography>
+              <Typography variant="h6" className="primary-text">
+                {formatCurrency(orderTotals.totalAmount)}
+              </Typography>
+            </Box>
 
-  // Render order history
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              startIcon={<PaymentIcon />}
+              onClick={handleCheckout}
+            >
+              Checkout
+            </Button>
+          </Box>
+        </>
+      )}
+    </Paper>
+  );
+
   const renderOrderHistory = () => {
     if (orderHistoryLoading) {
       return (
-        <Box
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          height="400px"
-        >
+        <Box display="flex" justifyContent="center" alignItems="center" height="300px">
           <CircularProgress className="custom-spinner" />
         </Box>
       );
     }
 
-    if (orderHistory.length === 0) {
+    if (!orderHistory.length) {
       return (
         <Box
           className="empty-state-container"
@@ -766,12 +548,7 @@ const CustomerDashboard = () => {
           }}
         >
           <ReceiptIcon className="empty-state-icon" />
-          <Typography
-            variant="h6"
-            className="text-light"
-            align="center"
-            gutterBottom
-          >
+          <Typography variant="h6" className="text-light" align="center" gutterBottom>
             No order history
           </Typography>
           <Typography variant="body2" className="text-light" align="center">
@@ -795,12 +572,7 @@ const CustomerDashboard = () => {
             className="order-paper"
             sx={{ p: 2, mb: 2 }}
           >
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-              mb={1}
-            >
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
               <Typography
                 variant="subtitle1"
                 className="primary-text"
@@ -808,12 +580,7 @@ const CustomerDashboard = () => {
               >
                 {order.id}
               </Typography>
-              <Chip
-                icon={<CheckCircleIcon />}
-                label={order.status}
-                color="success"
-                size="small"
-              />
+              <Chip icon={<CheckCircleIcon />} label={order.status} color="success" size="small" />
             </Box>
 
             <Typography variant="body2" className="text-light" gutterBottom>
@@ -824,15 +591,13 @@ const CustomerDashboard = () => {
 
             <List dense>
               {order.products.map((item, index) => (
-                <ListItem key={index} sx={{ py: 0 }}>
+                <ListItem key={`${order.id}-${index}`} sx={{ py: 0 }}>
                   <ListItemText
                     primary={
                       <span className="text-white">{`${item.name} x ${item.quantity}`}</span>
                     }
                     secondary={
-                      <span className="text-light">
-                        {formatCurrency(item.price)}
-                      </span>
+                      <span className="text-light">{formatCurrency(item.price)}</span>
                     }
                   />
                   <Typography className="tertiary-text">
@@ -844,11 +609,7 @@ const CustomerDashboard = () => {
 
             <div className="custom-divider"></div>
 
-            <Box
-              display="flex"
-              justifyContent="space-between"
-              alignItems="center"
-            >
+            <Box display="flex" justifyContent="space-between" alignItems="center">
               <Box>
                 <Typography variant="body2" className="text-light">
                   Subtotal: {formatCurrency(order.subtotal)}
@@ -867,7 +628,6 @@ const CustomerDashboard = () => {
     );
   };
 
-  // Main component render
   return (
     <DarkOverlay>
       <Container
@@ -884,12 +644,7 @@ const CustomerDashboard = () => {
           color: "#fff",
         }}
       >
-        <Box
-          display="flex"
-          justifyContent="space-between"
-          alignItems="center"
-          mb={3}
-        >
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
           <Typography
             variant="h4"
             gutterBottom
@@ -939,6 +694,18 @@ const CustomerDashboard = () => {
 
         <div className="custom-divider"></div>
 
+        {errorMessage && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {errorMessage}
+          </Alert>
+        )}
+
+        {inventoryContext?.error && activeView === "shop" && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            {inventoryContext.error}
+          </Alert>
+        )}
+
         {activeView === "shop" ? (
           <Grid container spacing={3}>
             <Grid item xs={12} md={8}>
@@ -952,7 +719,6 @@ const CustomerDashboard = () => {
           renderOrderHistory()
         )}
 
-        {/* Payment Form Dialog */}
         <Dialog
           open={checkoutOpen}
           onClose={handleCloseCheckout}
@@ -976,19 +742,12 @@ const CustomerDashboard = () => {
                       primary={`${item.name} x ${item.quantity}`}
                       secondary={formatCurrency(item.price)}
                     />
-                    <Typography>
-                      {formatCurrency(item.price * item.quantity)}
-                    </Typography>
+                    <Typography>{formatCurrency(item.price * item.quantity)}</Typography>
                   </ListItem>
                 ))}
               </List>
 
-              <Box
-                display="flex"
-                justifyContent="space-between"
-                alignItems="center"
-                mt={2}
-              >
+              <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
                 <Box>
                   <Typography variant="body2">
                     Subtotal: {formatCurrency(orderTotals.subtotal)}
@@ -1009,14 +768,13 @@ const CustomerDashboard = () => {
               Payment Method
             </Typography>
 
-            {/* Payment Method Selection */}
             <Box mb={3}>
               <FormControl component="fieldset">
                 <RadioGroup
                   aria-label="payment-method"
                   name="payment-method"
-                  defaultValue="credit-card"
-                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  value={paymentMethod}
+                  onChange={(event) => setPaymentMethod(event.target.value)}
                 >
                   <FormControlLabel
                     value="credit-card"
@@ -1058,129 +816,24 @@ const CustomerDashboard = () => {
               </FormControl>
             </Box>
 
-            {/* Dynamic Payment Details Form */}
-            {paymentMethod === "credit-card" && (
+            {(paymentMethod === "credit-card" || paymentMethod === "debit-card") && (
               <Grid container spacing={2}>
                 <Grid item xs={12}>
                   <TextField
                     label="Card Number"
                     fullWidth
                     placeholder="1234 5678 9012 3456"
-                    required
                     inputProps={{ maxLength: 19 }}
-                    onChange={(e) => {
-                      // Format card number with spaces
-                      const value = e.target.value.replace(/\D/g, "");
-                      const formattedValue = value.replace(
-                        /(\d{4})(?=\d)/g,
-                        "$1 "
-                      );
-                      e.target.value = formattedValue;
-                    }}
                   />
                 </Grid>
                 <Grid item xs={6}>
-                  <TextField
-                    label="Expiry Date"
-                    fullWidth
-                    placeholder="MM/YY"
-                    required
-                    inputProps={{ maxLength: 5 }}
-                    onChange={(e) => {
-                      // Format date as MM/YY
-                      const value = e.target.value.replace(/\D/g, "");
-                      if (value.length > 2) {
-                        e.target.value = `${value.slice(0, 2)}/${value.slice(
-                          2
-                        )}`;
-                      }
-                    }}
-                  />
+                  <TextField label="Expiry Date" fullWidth placeholder="MM/YY" inputProps={{ maxLength: 5 }} />
                 </Grid>
                 <Grid item xs={6}>
-                  <TextField
-                    label="CVV"
-                    fullWidth
-                    placeholder="123"
-                    required
-                    type="password"
-                    inputProps={{ maxLength: 3 }}
-                  />
+                  <TextField label="CVV" fullWidth placeholder="123" type="password" inputProps={{ maxLength: 3 }} />
                 </Grid>
                 <Grid item xs={12}>
-                  <TextField
-                    label="Cardholder Name"
-                    fullWidth
-                    placeholder="John Doe"
-                    required
-                  />
-                </Grid>
-              </Grid>
-            )}
-
-            {paymentMethod === "debit-card" && (
-              <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Card Number"
-                    fullWidth
-                    placeholder="1234 5678 9012 3456"
-                    required
-                    inputProps={{ maxLength: 19 }}
-                    onChange={(e) => {
-                      // Format card number with spaces
-                      const value = e.target.value.replace(/\D/g, "");
-                      const formattedValue = value.replace(
-                        /(\d{4})(?=\d)/g,
-                        "$1 "
-                      );
-                      e.target.value = formattedValue;
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    label="Expiry Date"
-                    fullWidth
-                    placeholder="MM/YY"
-                    required
-                    inputProps={{ maxLength: 5 }}
-                    onChange={(e) => {
-                      // Format date as MM/YY
-                      const value = e.target.value.replace(/\D/g, "");
-                      if (value.length > 2) {
-                        e.target.value = `${value.slice(0, 2)}/${value.slice(
-                          2
-                        )}`;
-                      }
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={6}>
-                  <TextField
-                    label="CVV"
-                    fullWidth
-                    placeholder="123"
-                    required
-                    type="password"
-                    inputProps={{ maxLength: 3 }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Cardholder Name"
-                    fullWidth
-                    placeholder="John Doe"
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    label="Bank Name"
-                    fullWidth
-                    placeholder="Your Bank"
-                    required
-                  />
+                  <TextField label="Cardholder Name" fullWidth placeholder="John Doe" />
                 </Grid>
               </Grid>
             )}
@@ -1192,14 +845,12 @@ const CustomerDashboard = () => {
                     label="UPI ID"
                     fullWidth
                     placeholder="username@upi"
-                    required
                     helperText="Example: yourname@okaxis or yourname@ybl"
                   />
                 </Grid>
                 <Grid item xs={12}>
                   <Alert severity="info">
-                    You will receive a payment request on your UPI app. Please
-                    keep your UPI app ready.
+                    You will receive a payment request on your UPI app. Please keep your UPI app ready.
                   </Alert>
                 </Grid>
               </Grid>
@@ -1207,88 +858,68 @@ const CustomerDashboard = () => {
 
             {paymentMethod === "cash" && (
               <Alert severity="info" sx={{ mt: 2 }}>
-                Pay with cash when your order is delivered. Please keep exact
-                change ready.
+                Pay with cash when your order is delivered.
               </Alert>
             )}
           </DialogContent>
 
           <DialogActions sx={{ p: 2 }}>
-            <Button onClick={handleCloseCheckout}>Cancel</Button>
+            <Button onClick={handleCloseCheckout} disabled={submittingOrder}>
+              Cancel
+            </Button>
             <Button
               variant="contained"
               color="primary"
               startIcon={<PaymentIcon />}
+              disabled={submittingOrder}
               onClick={() => {
-                // Get all payment form details
                 let details = {};
 
                 if (
                   paymentMethod === "credit-card" ||
                   paymentMethod === "debit-card"
                 ) {
-                  const cardNumber = document.querySelector(
-                    'input[placeholder="1234 5678 9012 3456"]'
-                  )?.value;
-                  const expiry = document.querySelector(
-                    'input[placeholder="MM/YY"]'
-                  )?.value;
-                  const cardholderName = document.querySelector(
-                    'input[placeholder="John Doe"]'
-                  )?.value;
-
-                  if (!cardNumber || !expiry || !cardholderName) {
-                    // Silently fill in default values instead of showing an error
-                    details = {
-                      cardType: paymentMethod,
-                      cardholderName: cardholderName || "Demo User",
-                      cardNumber: cardNumber || "4111 1111 1111 1111",
-                      expiry: expiry || "12/25",
-                    };
-                  } else {
-                    details = {
-                      cardType: paymentMethod,
-                      cardholderName,
-                      cardNumber,
-                      expiry,
-                    };
-                  }
-                } else if (paymentMethod === "upi") {
-                  const upiId = document.querySelector(
-                    'input[placeholder="username@upi"]'
-                  )?.value;
-
-                  // Use default UPI if not provided
                   details = {
-                    upiId: upiId || "customer@ybl",
+                    cardType: paymentMethod,
+                    cardholderName:
+                      document.querySelector('input[placeholder="John Doe"]')?.value ||
+                      user?.name ||
+                      "Customer",
+                    cardNumber:
+                      document.querySelector(
+                        'input[placeholder="1234 5678 9012 3456"]'
+                      )?.value || "",
+                    expiry:
+                      document.querySelector('input[placeholder="MM/YY"]')?.value || "",
+                  };
+                } else if (paymentMethod === "upi") {
+                  details = {
+                    upiId:
+                      document.querySelector('input[placeholder="username@upi"]')
+                        ?.value || "",
                   };
                 }
 
-                // Always process payment without showing any errors
                 handleProcessPayment({
                   method: paymentMethod,
-                  details: details,
+                  details,
                 });
               }}
             >
-              Pay {formatCurrency(orderTotals.totalAmount)}
+              {submittingOrder
+                ? "Processing..."
+                : `Pay ${formatCurrency(orderTotals.totalAmount)}`}
             </Button>
           </DialogActions>
         </Dialog>
 
-        {/* Order Success Dialog */}
         <Dialog
           open={successOpen}
           onClose={handleCloseSuccess}
           PaperProps={{ className: "custom-dialog-paper" }}
         >
           <DialogContent>
-            <Box
-              display="flex"
-              flexDirection="column"
-              alignItems="center"
-              p={2}
-            >
+            <Box display="flex" flexDirection="column" alignItems="center" p={2}>
               <CheckCircleIcon color="success" sx={{ fontSize: 60, mb: 2 }} />
               <Typography variant="h5" gutterBottom>
                 Order Placed Successfully!
@@ -1297,17 +928,12 @@ const CustomerDashboard = () => {
                 Your order #{orderDetails?.id} has been placed successfully.
               </Typography>
               <Typography variant="body2" color="text.secondary" align="center">
-                A confirmation has been sent to your email.
+                Payment Method: {paymentMethodLabel(orderDetails?.paymentMethod)}
               </Typography>
 
               <Box my={2} width="100%">
                 <Alert severity="success">
-                  <Box display="flex" alignItems="center">
-                    <Typography variant="body2">
-                      Inventory has been updated successfully! Your order is
-                      being processed.
-                    </Typography>
-                  </Box>
+                  Inventory has been updated from MongoDB and your order is now part of your account history.
                 </Alert>
               </Box>
             </Box>
@@ -1324,11 +950,7 @@ const CustomerDashboard = () => {
             >
               View Orders
             </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleCloseSuccess}
-            >
+            <Button variant="contained" color="primary" onClick={handleCloseSuccess}>
               Continue Shopping
             </Button>
           </DialogActions>

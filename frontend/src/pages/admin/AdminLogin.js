@@ -46,7 +46,7 @@ const AdminLogin = () => {
   // Redirect if already authenticated as admin
   useEffect(() => {
     if (isAuthenticated && user && user.role === "admin") {
-      navigate("/admin/dashboard");
+      navigate("/admin");
     }
   }, [isAuthenticated, user, navigate]);
 
@@ -115,7 +115,7 @@ const AdminLogin = () => {
         console.log("Admin login successful:", user);
 
         // Navigate to admin dashboard after successful login
-        navigate("/admin/dashboard");
+        navigate("/admin");
       } else {
         setAttempts((prev) => prev + 1);
         throw new Error("Invalid admin credentials");

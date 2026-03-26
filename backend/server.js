@@ -70,7 +70,8 @@ eventEmitter.on("lowStock", (data) => {
 const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
-  "https://jungle-safari-souvenir-shop-o67c.vercel.app"
+  "https://jungle-safari-souvenir-shop-o67c.vercel.app",
+  "https://jungle-safari-ma1d.vercel.app"
 ];
 
 app.use(cors({

@@ -1,89 +1,69 @@
 const express = require("express");
 const router = express.Router();
+const Supplier = require("../models/Supplier");
 const { protect } = require("../middleware/auth");
 
-// Mock suppliers data for demo purposes
-let suppliers = [
-  {
-    _id: "1",
-    name: "Wilderness Outfitters",
-    contactPerson: "John Smith",
-    email: "john@wildernessoutfitters.com",
-    phone: "555-123-4567",
-    address: "123 Jungle Ave, Safari City",
-    categories: ["Apparel", "Equipment", "Footwear"],
-    notes: "Preferred supplier for hiking equipment.",
-  },
-  {
-    _id: "2",
-    name: "Safari Supplies Inc",
-    contactPerson: "Jane Doe",
-    email: "jane@safarisupplies.com",
-    phone: "555-765-4321",
-    address: "456 Wildlife Lane, Adventure Town",
-    categories: ["Health", "Food", "Equipment"],
-    notes: "Specializes in health and safety products.",
-  },
-  {
-    _id: "3",
-    name: "Jungle Gear Co.",
-    contactPerson: "Robert Johnson",
-    email: "robert@junglegear.com",
-    phone: "555-987-6543",
-    address: "789 Explorer Road, Trail City",
-    categories: ["Apparel", "Equipment", "Accessories"],
-    notes: "Known for durable, high-quality gear.",
-  },
-  {
-    _id: "4",
-    name: "Adventure Equipment Ltd",
-    contactPerson: "Sarah Williams",
-    email: "sarah@adventureequipment.com",
-    phone: "555-234-5678",
-    address: "101 Safari Street, Jungle Junction",
-    categories: ["Equipment", "Books", "Maps"],
-    notes: "Great for specialized equipment and educational materials.",
-  },
-];
+function formatSupplier(supplier) {
+  return {
+    id: supplier._id.toString(),
+    _id: supplier._id,
+    name: supplier.name,
+    contactPerson: supplier.contactPerson || "",
+    email: supplier.email,
+    phone: supplier.phone,
+    address: supplier.address || "",
+    categories: supplier.categories || [],
+    notes: supplier.notes || "",
+    isActive: supplier.isActive,
+    status: supplier.isActive ? "Active" : "Inactive",
+    createdAt: supplier.createdAt,
+    updatedAt: supplier.updatedAt,
+  };
+}
 
 // @desc    Get all suppliers
 // @route   GET /api/suppliers
 // @access  Private
-router.get("/", protect, (req, res) => {
-  res.json(suppliers);
+router.get("/", protect, async (req, res) => {
+  try {
+    const suppliers = await Supplier.find().sort({ name: 1 });
+    res.json(suppliers.map(formatSupplier));
+  } catch (error) {
+    console.error("Error fetching suppliers:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 // @desc    Create a new supplier
 // @route   POST /api/suppliers
 // @access  Private
-router.post("/", protect, (req, res) => {
+router.post("/", protect, async (req, res) => {
   try {
-    const { name, contactPerson, email, phone, address, categories, notes } =
+    const { name, contactPerson, email, phone, address, categories, notes, isActive } =
       req.body;
 
-    // Validate required fields
     if (!name || !email || !phone) {
       return res.status(400).json({
-        message: "Please provide name, email, and phone",
+        message: "Please provide supplier name, email, and phone",
       });
     }
 
-    // Create a new supplier object
-    const newSupplier = {
-      _id: Date.now().toString(), // Generate a simple unique ID for the mock
+    const supplier = await Supplier.create({
       name,
       contactPerson,
       email,
       phone,
       address,
-      categories,
+      categories: Array.isArray(categories)
+        ? categories
+        : typeof categories === "string" && categories.trim()
+        ? categories.split(",").map((item) => item.trim()).filter(Boolean)
+        : [],
       notes,
-    };
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
+    });
 
-    // Add to suppliers array
-    suppliers.push(newSupplier);
-
-    res.status(201).json(newSupplier);
+    res.status(201).json(formatSupplier(supplier));
   } catch (error) {
     console.error("Error creating supplier:", error);
     res.status(500).json({ message: "Server error" });
@@ -93,34 +73,35 @@ router.post("/", protect, (req, res) => {
 // @desc    Update a supplier
 // @route   PUT /api/suppliers/:id
 // @access  Private
-router.put("/:id", protect, (req, res) => {
+router.put("/:id", protect, async (req, res) => {
   try {
-    const supplierId = req.params.id;
-    const { name, contactPerson, email, phone, address, categories, notes } =
-      req.body;
+    const supplier = await Supplier.findById(req.params.id);
 
-    // Find the supplier
-    const supplierIndex = suppliers.findIndex((s) => s._id === supplierId);
-
-    if (supplierIndex === -1) {
+    if (!supplier) {
       return res.status(404).json({ message: "Supplier not found" });
     }
 
-    // Update supplier
-    const updatedSupplier = {
-      ...suppliers[supplierIndex],
-      name: name || suppliers[supplierIndex].name,
-      contactPerson: contactPerson || suppliers[supplierIndex].contactPerson,
-      email: email || suppliers[supplierIndex].email,
-      phone: phone || suppliers[supplierIndex].phone,
-      address: address || suppliers[supplierIndex].address,
-      categories: categories || suppliers[supplierIndex].categories,
-      notes: notes || suppliers[supplierIndex].notes,
-    };
+    const { name, contactPerson, email, phone, address, categories, notes, isActive } =
+      req.body;
 
-    suppliers[supplierIndex] = updatedSupplier;
+    if (name !== undefined) supplier.name = name;
+    if (contactPerson !== undefined) supplier.contactPerson = contactPerson;
+    if (email !== undefined) supplier.email = email;
+    if (phone !== undefined) supplier.phone = phone;
+    if (address !== undefined) supplier.address = address;
+    if (categories !== undefined) {
+      supplier.categories = Array.isArray(categories)
+        ? categories
+        : typeof categories === "string" && categories.trim()
+        ? categories.split(",").map((item) => item.trim()).filter(Boolean)
+        : [];
+    }
+    if (notes !== undefined) supplier.notes = notes;
+    if (isActive !== undefined) supplier.isActive = Boolean(isActive);
 
-    res.json(updatedSupplier);
+    await supplier.save();
+
+    res.json(formatSupplier(supplier));
   } catch (error) {
     console.error("Error updating supplier:", error);
     res.status(500).json({ message: "Server error" });
@@ -130,20 +111,15 @@ router.put("/:id", protect, (req, res) => {
 // @desc    Delete a supplier
 // @route   DELETE /api/suppliers/:id
 // @access  Private
-router.delete("/:id", protect, (req, res) => {
+router.delete("/:id", protect, async (req, res) => {
   try {
-    const supplierId = req.params.id;
+    const supplier = await Supplier.findById(req.params.id);
 
-    // Find the supplier
-    const supplierIndex = suppliers.findIndex((s) => s._id === supplierId);
-
-    if (supplierIndex === -1) {
+    if (!supplier) {
       return res.status(404).json({ message: "Supplier not found" });
     }
 
-    // Remove from array
-    suppliers = suppliers.filter((s) => s._id !== supplierId);
-
+    await Supplier.findByIdAndDelete(req.params.id);
     res.json({ message: "Supplier removed" });
   } catch (error) {
     console.error("Error deleting supplier:", error);

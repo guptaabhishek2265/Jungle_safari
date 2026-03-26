@@ -297,27 +297,30 @@ const ProductManagement = () => {
   };
 
   // Save product changes
-  const handleSaveProductDialog = () => {
-    // This would connect to your backend API in a real app
-    // For now, we'll simulate a successful update
+  const handleSaveProductDialog = async () => {
+    try {
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+      await axios.put(`${API_URL}/products/${currentProduct._id || currentProduct.id}`, {
+        name: currentProduct.name,
+        category: currentProduct.category,
+        price: currentProduct.price,
+        reorderLevel: currentProduct.reorderLevel,
+        imageUrl: currentProduct.imageUrl,
+      });
 
-    // Update status based on stock and reorder level
-    const updatedProduct = {
-      ...currentProduct,
-      status:
-        currentProduct.stock <= currentProduct.reorderLevel
-          ? "Low Stock"
-          : "In Stock",
-    };
-
-    // Show success message
-    setSuccessMessage(`Product "${updatedProduct.name}" updated successfully.`);
-    setTimeout(() => {
-      setSuccessMessage("");
-    }, 3000);
-
-    // Close dialog
-    handleCloseEditDialog();
+      setSuccessMessage(`Product "${currentProduct.name}" updated successfully.`);
+      fetchProducts();
+      handleCloseEditDialog();
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error("Error updating product:", error);
+      showAlert(
+        error.response?.data?.message || "Failed to update product.",
+        "error"
+      );
+    }
   };
 
   // Open delete confirmation dialog
@@ -333,20 +336,19 @@ const ProductManagement = () => {
   };
 
   // Confirm product deletion
-  const handleConfirmDelete = () => {
-    // This would connect to your backend API in a real app
-    // For now, we'll simulate a successful deletion
-
-    // Show success message
-    setSuccessMessage(
-      `Product "${productToDelete.name}" deleted successfully.`
-    );
-    setTimeout(() => {
-      setSuccessMessage("");
-    }, 3000);
-
-    // Close dialog
-    handleCloseDeleteDialog();
+  const handleConfirmDelete = async () => {
+    try {
+      await handleDeleteProduct(productToDelete._id || productToDelete.id);
+      setSuccessMessage(
+        `Product "${productToDelete.name}" deleted successfully.`
+      );
+      handleCloseDeleteDialog();
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
+    } catch (error) {
+      console.error("Error deleting product:", error);
+    }
   };
 
   return (

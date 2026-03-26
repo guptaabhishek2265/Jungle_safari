@@ -150,6 +150,11 @@ export const AuthProvider = ({ children }) => {
     delete axios.defaults.headers.common["Authorization"];
   };
 
+  const updateUserProfile = (updatedUser) => {
+    setUser(updatedUser);
+    localStorage.setItem("user", JSON.stringify(updatedUser));
+  };
+
   // Special admin login with enhanced security
   const adminLogin = async (email, password) => {
     setLoading(true);
@@ -224,6 +229,7 @@ export const AuthProvider = ({ children }) => {
         login,
         adminLogin,
         logout,
+        updateUserProfile,
       }}
     >
       {children}

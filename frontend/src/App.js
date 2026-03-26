@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect } from "react";
 import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { Box } from "@mui/material";
 import Sidebar from "./components/Sidebar";
@@ -21,8 +21,26 @@ function App() {
   const location = useLocation();
   const { isAuthenticated, user, loading } = useContext(AuthContext);
   const isAuthPage = ["/login", "/register"].includes(location.pathname);
+  const hasStoredToken = Boolean(localStorage.getItem("token"));
 
-  if (loading) {
+  useEffect(() => {
+    [
+      "customer-orders",
+      "customer-cart",
+      "inventory-products",
+      "inventoryProducts",
+      "purchase-orders",
+      "sales-stats",
+      "recent-sales",
+      "tracked-customers",
+      "newSale",
+      "inventoryUpdate",
+      "newProductAdded",
+      "reorder-notifications",
+    ].forEach((key) => localStorage.removeItem(key));
+  }, []);
+
+  if (loading && hasStoredToken && !isAuthenticated) {
     // Show loading state
     return <div>Loading...</div>;
   }

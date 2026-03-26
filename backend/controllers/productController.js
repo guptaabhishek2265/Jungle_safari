@@ -2,6 +2,31 @@ const Product = require("../models/Product");
 const Inventory = require("../models/Inventory");
 const mongoose = require("mongoose");
 
+function formatProduct(product, inventory) {
+  const stock = inventory ? inventory.quantity : 0;
+  const reorderLevel = inventory ? inventory.reorderLevel : 0;
+
+  return {
+    id: product._id.toString(),
+    _id: product._id,
+    name: product.name,
+    description: product.description,
+    category: product.category,
+    price: product.price,
+    cost: product.costPrice,
+    sku: product.sku,
+    barcode: product.barcode,
+    imageUrl: product.imageUrl,
+    isActive: product.isActive,
+    createdAt: product.createdAt,
+    updatedAt: product.updatedAt,
+    stock,
+    reorderLevel,
+    location: inventory ? inventory.location : "",
+    status: stock <= 0 ? "Out of Stock" : stock <= reorderLevel ? "Low Stock" : "In Stock",
+  };
+}
+
 // @desc    Get all products
 // @route   GET /api/products
 // @access  Private
@@ -19,24 +44,7 @@ exports.getProducts = async (req, res) => {
           inv.product && inv.product._id.toString() === product._id.toString()
       );
 
-      return {
-        _id: product._id,
-        name: product.name,
-        description: product.description,
-        category: product.category,
-        price: product.price,
-        cost: product.costPrice,
-        sku: product.sku,
-        barcode: product.barcode,
-        imageUrl: product.imageUrl,
-        isActive: product.isActive,
-        createdAt: product.createdAt,
-        updatedAt: product.updatedAt,
-        // Add inventory data if exists
-        stock: inventory ? inventory.quantity : 0,
-        reorderLevel: inventory ? inventory.reorderLevel : 0,
-        location: inventory ? inventory.location : "",
-      };
+      return formatProduct(product, inventory);
     });
 
     res.json(productsWithStock);
@@ -60,24 +68,7 @@ exports.getProduct = async (req, res) => {
     // Get inventory data
     const inventory = await Inventory.findOne({ product: product._id });
 
-    const productWithStock = {
-      _id: product._id,
-      name: product.name,
-      description: product.description,
-      category: product.category,
-      price: product.price,
-      cost: product.costPrice,
-      sku: product.sku,
-      barcode: product.barcode,
-      imageUrl: product.imageUrl,
-      isActive: product.isActive,
-      createdAt: product.createdAt,
-      updatedAt: product.updatedAt,
-      // Add inventory data if exists
-      stock: inventory ? inventory.quantity : 0,
-      reorderLevel: inventory ? inventory.reorderLevel : 0,
-      location: inventory ? inventory.location : "",
-    };
+    const productWithStock = formatProduct(product, inventory);
 
     res.json(productWithStock);
   } catch (error) {
@@ -152,20 +143,7 @@ exports.createProduct = async (req, res) => {
     session.endSession();
 
     // Return the combined product and inventory data
-    res.status(201).json({
-      _id: savedProduct._id,
-      name: savedProduct.name,
-      description: savedProduct.description,
-      category: savedProduct.category,
-      price: savedProduct.price,
-      cost: savedProduct.costPrice,
-      sku: savedProduct.sku,
-      barcode: savedProduct.barcode,
-      imageUrl: savedProduct.imageUrl,
-      stock: inventory.quantity,
-      reorderLevel: inventory.reorderLevel,
-      location: inventory.location,
-    });
+    res.status(201).json(formatProduct(savedProduct, inventory));
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -224,21 +202,7 @@ exports.updateProduct = async (req, res) => {
     // Get updated inventory data
     const inventory = await Inventory.findOne({ product: product._id });
 
-    res.json({
-      _id: updatedProduct._id,
-      name: updatedProduct.name,
-      description: updatedProduct.description,
-      category: updatedProduct.category,
-      price: updatedProduct.price,
-      cost: updatedProduct.costPrice,
-      sku: updatedProduct.sku,
-      barcode: updatedProduct.barcode,
-      imageUrl: updatedProduct.imageUrl,
-      isActive: updatedProduct.isActive,
-      stock: inventory ? inventory.quantity : 0,
-      reorderLevel: inventory ? inventory.reorderLevel : 0,
-      location: inventory ? inventory.location : "",
-    });
+    res.json(formatProduct(updatedProduct, inventory));
   } catch (error) {
     console.error("Error updating product:", error);
 
@@ -305,20 +269,11 @@ exports.getLowStockProducts = async (req, res) => {
 
     // Format response
     const formattedItems = lowStockItems.map((item) => {
-      return {
-        _id: item.product._id,
-        name: item.product.name,
-        description: item.product.description,
-        category: item.product.category,
-        price: item.product.price,
-        cost: item.product.costPrice,
-        sku: item.product.sku,
-        barcode: item.product.barcode,
-        isActive: item.product.isActive,
-        stock: item.quantity,
+      return formatProduct(item.product, {
+        quantity: item.quantity,
         reorderLevel: item.reorderLevel,
         location: item.location,
-      };
+      });
     });
 
     res.json(formattedItems);

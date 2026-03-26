@@ -1,8 +1,11 @@
 import axios from "axios";
 
+const rawApiUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const normalizedBaseUrl = rawApiUrl.replace(/\/api\/?$/, "");
+
 // Create an instance of axios with default config
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000",
+  baseURL: normalizedBaseUrl,
   headers: {
     "Content-Type": "application/json",
   },
@@ -30,9 +33,20 @@ api.interceptors.response.use(
   (error) => {
     // Handle session expiration or unauthorized access
     if (error.response && error.response.status === 401) {
-      // Clear saved token and redirect to login page
-      localStorage.removeItem("token");
-      window.location.href = "/login";
+      const responseMessage =
+        error.response.data?.message || error.response.data?.msg || "";
+      const isAuthFailure =
+        error.config?.url?.includes("/auth/me") ||
+        /not authorized, no token|not authorized, user not found|not authorized, token invalid|account is disabled/i.test(
+          responseMessage
+        );
+
+      if (isAuthFailure) {
+        // Clear saved auth state only when the session/token is actually invalid
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.href = "/login";
+      }
     }
 
     // Handle server errors with a more specific message

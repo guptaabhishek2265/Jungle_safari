@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Grid,
@@ -47,6 +47,8 @@ import DashboardLayout from "../../components/common/DashboardLayout";
 import SupplierManagement from "./SupplierManagement";
 import PurchaseOrderManagement from "./PurchaseOrderManagement";
 import AutoReorderSettings from "../../components/inventory/AutoReorderSettings";
+import api from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
 
 // Create inventory context for real-time updates
 export const InventoryContext = React.createContext();
@@ -154,8 +156,46 @@ const InteractiveBackground = ({ children }) => {
   );
 };
 
+const getLowStockProducts = (items, enabled, threshold) =>
+  items.filter((product) =>
+    enabled ? product.stock <= threshold : product.stock <= product.reorderLevel
+  );
+
+const buildStats = (items, enabled, threshold) => {
+  const lowStock = getLowStockProducts(items, enabled, threshold);
+  return {
+    totalProducts: items.length,
+    totalStock: items.reduce((sum, item) => sum + Number(item.stock || 0), 0),
+    lowStockItems: lowStock.length,
+  };
+};
+
+const mergeNotifications = (items, enabled, threshold, previous = []) => {
+  const previousByProduct = new Map(
+    previous.map((notification) => [notification.productId, notification])
+  );
+
+  return getLowStockProducts(items, enabled, threshold).map((product) => {
+    const existing = previousByProduct.get(product.id);
+    return {
+      id: existing?.id || `reorder-${product.id}`,
+      productId: product.id,
+      productName: product.name,
+      currentStock: product.stock,
+      reorderLevel: enabled ? threshold : product.reorderLevel,
+      reorderQuantity: Math.max(
+        (enabled ? threshold : product.reorderLevel) - product.stock + 10,
+        5
+      ),
+      timestamp: existing?.timestamp || new Date().toISOString(),
+      status: existing?.status || "pending",
+    };
+  });
+};
+
 // Create a provider component
 export const InventoryProvider = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   const [products, setProducts] = useState([]);
   const [stats, setStats] = useState({
     totalProducts: 0,
@@ -163,329 +203,139 @@ export const InventoryProvider = ({ children }) => {
     lowStockItems: 0,
   });
   const [autoReorderEnabled, setAutoReorderEnabled] = useState(false);
-  const [autoReorderThreshold, setAutoReorderThreshold] = useState(5); // Default threshold
+  const [autoReorderThreshold, setAutoReorderThreshold] = useState(5);
   const [reorderNotifications, setReorderNotifications] = useState([]);
+  const [inventoryUpdates, setInventoryUpdates] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  // Function to update product stock in real-time
-  const updateProductStock = (productId, quantityChange) => {
-    setProducts((prevProducts) => {
-      const updatedProducts = prevProducts.map((product) => {
-        if (product.id === productId) {
-          const newStock = Math.max(0, product.stock - quantityChange);
-          return {
-            ...product,
-            stock: newStock,
-            status: newStock <= product.reorderLevel ? "Low Stock" : "In Stock",
-          };
-        }
-        return product;
-      });
-
-      // Update stats
-      const newLowStock = updatedProducts.filter(
-        (p) => p.stock <= p.reorderLevel
+  const refreshProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = await api.get("/api/products");
+      const fetchedProducts = Array.isArray(response.data) ? response.data : [];
+      setProducts(fetchedProducts);
+    } catch (err) {
+      console.error("Error loading inventory products:", err);
+      setError(
+        err.response?.data?.message || "Failed to load inventory products."
       );
-      const newTotalStock = updatedProducts.reduce(
-        (sum, p) => sum + p.stock,
-        0
-      );
-
-      setStats({
-        totalProducts: updatedProducts.length,
-        totalStock: newTotalStock,
-        lowStockItems: newLowStock.length,
-      });
-
-      // Check for auto-reorder if enabled
-      if (autoReorderEnabled) {
-        checkAndCreateAutoReorders(updatedProducts);
-      }
-
-      return updatedProducts;
-    });
-  };
-
-  // Function to check and create automatic reorders
-  const checkAndCreateAutoReorders = (currentProducts) => {
-    const productsToReorder = currentProducts.filter((product) => {
-      // If auto-reorder is enabled, use the autoReorderThreshold
-      // Otherwise, use the product's individual reorderLevel
-      if (autoReorderEnabled) {
-        return product.stock <= autoReorderThreshold;
-      } else {
-        return (
-          product.stock <= product.reorderLevel &&
-          product.stock <= autoReorderThreshold
-        );
-      }
-    });
-
-    if (productsToReorder.length > 0) {
-      // Create reorder notifications for each product
-      const newNotifications = productsToReorder.map((product) => ({
-        id: `reorder-${Date.now()}-${product.id}`,
-        productId: product.id,
-        productName: product.name,
-        currentStock: product.stock,
-        reorderLevel: autoReorderEnabled
-          ? autoReorderThreshold
-          : product.reorderLevel,
-        reorderQuantity: Math.max(
-          autoReorderEnabled
-            ? autoReorderThreshold - product.stock + 10
-            : product.reorderLevel - product.stock + 10,
-          5
-        ),
-        timestamp: new Date().toISOString(),
-        status: "pending",
-      }));
-
-      // Add new notifications
-      setReorderNotifications((prev) => [...newNotifications, ...prev]);
-
-      // Auto-create purchase orders if enabled
-      if (autoReorderEnabled) {
-        createAutoPurchaseOrders(productsToReorder);
-      }
+      setProducts([]);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  // Function to create automatic purchase orders
-  const createAutoPurchaseOrders = (productsToReorder) => {
-    // Group products by category (in a real system, group by supplier)
-    const groupedProducts = productsToReorder.reduce((groups, product) => {
-      const category = product.category || "Uncategorized";
-      if (!groups[category]) {
-        groups[category] = [];
-      }
-      groups[category].push(product);
-      return groups;
-    }, {});
-
-    // For each group, create a purchase order
-    Object.entries(groupedProducts).forEach(([category, categoryProducts]) => {
-      const orderItems = categoryProducts.map((product) => ({
-        productId: product.id,
-        name: product.name,
-        quantity: Math.max(product.reorderLevel - product.stock + 10, 5),
-        price: product.price,
-        total:
-          product.price *
-          Math.max(product.reorderLevel - product.stock + 10, 5),
-      }));
-
-      const totalAmount = orderItems.reduce((sum, item) => sum + item.total, 0);
-
-      const purchaseOrder = {
-        id: `PO-AUTO-${Date.now()}-${category.substr(0, 3)}`,
-        date: new Date().toISOString(),
-        supplier: `${category} Supplier`,
-        status: "Auto-generated",
-        totalAmount,
-        items: orderItems,
-      };
-
-      // Store the purchase order in localStorage
-      const purchaseOrders = JSON.parse(
-        localStorage.getItem("purchase-orders") || "[]"
-      );
-      purchaseOrders.push(purchaseOrder);
-      localStorage.setItem("purchase-orders", JSON.stringify(purchaseOrders));
-
-      // Update reorder notifications status
-      setReorderNotifications((prev) =>
-        prev.map((notification) =>
-          categoryProducts.some(
-            (p) =>
-              p.id === notification.productId &&
-              notification.status === "pending"
-          )
-            ? { ...notification, status: "processed" }
-            : notification
-        )
-      );
-    });
-  };
-
-  // Add a new product
-  const addProduct = (productToAdd) => {
-    setProducts((prevProducts) => [...prevProducts, productToAdd]);
-
-    // Update stats
-    setStats((prevStats) => ({
-      ...prevStats,
-      totalProducts: prevStats.totalProducts + 1,
-      totalStock: prevStats.totalStock + productToAdd.stock,
-      lowStockItems:
-        productToAdd.stock < productToAdd.reorderLevel
-          ? prevStats.lowStockItems + 1
-          : prevStats.lowStockItems,
-    }));
-  };
-
-  // Toggle auto-reorder system
-  const toggleAutoReorder = (enabled) => {
-    setAutoReorderEnabled(enabled);
-
-    // If enabling, check current inventory for items to reorder
-    if (enabled && products.length > 0) {
-      checkAndCreateAutoReorders(products);
-    }
-
-    // Force update of lowStockItems count in stats
-    if (products.length > 0) {
-      const lowStock = products.filter((p) => {
-        if (enabled) {
-          return p.stock <= autoReorderThreshold;
-        } else {
-          return p.stock <= p.reorderLevel;
-        }
-      });
-
-      setStats((prevStats) => ({
-        ...prevStats,
-        lowStockItems: lowStock.length,
-      }));
-    }
-  };
-
-  // Update auto-reorder threshold
-  const updateAutoReorderThreshold = (threshold) => {
-    const newThreshold = Math.max(1, threshold);
-    setAutoReorderThreshold(newThreshold);
-
-    // Update lowStockItems count in stats
-    if (products.length > 0) {
-      const lowStock = products.filter((p) => {
-        if (autoReorderEnabled) {
-          return p.stock <= newThreshold;
-        } else {
-          return p.stock <= p.reorderLevel;
-        }
-      });
-
-      setStats((prevStats) => ({
-        ...prevStats,
-        lowStockItems: lowStock.length,
-      }));
-    }
-  };
-
-  // Clear a notification
-  const clearReorderNotification = (notificationId) => {
-    setReorderNotifications((prev) =>
-      prev.filter((n) => n.id !== notificationId)
-    );
-  };
-
-  // Load products on mount
-  useEffect(() => {
-    const fetchProducts = async () => {
-      // Load products from localStorage if available
-      const storedProducts = localStorage.getItem("inventory-products");
-      if (storedProducts) {
-        const parsedProducts = JSON.parse(storedProducts);
-        setProducts(parsedProducts);
-
-        // Calculate stats
-        const lowStock = parsedProducts.filter(
-          (p) => p.stock <= p.reorderLevel
-        );
-        const totalStock = parsedProducts.reduce(
-          (sum, product) => sum + product.stock,
-          0
-        );
-
-        setStats({
-          totalProducts: parsedProducts.length,
-          totalStock: totalStock,
-          lowStockItems: lowStock.length,
-        });
-      }
-
-      // Load auto-reorder settings
-      const savedAutoReorderEnabled = localStorage.getItem(
-        "auto-reorder-enabled"
-      );
-      if (savedAutoReorderEnabled !== null) {
-        setAutoReorderEnabled(JSON.parse(savedAutoReorderEnabled));
-      }
-
-      const savedThreshold = localStorage.getItem("auto-reorder-threshold");
-      if (savedThreshold !== null) {
-        setAutoReorderThreshold(parseInt(savedThreshold));
-      }
-
-      // Load saved notifications
-      const savedNotifications = localStorage.getItem("reorder-notifications");
-      if (savedNotifications) {
-        setReorderNotifications(JSON.parse(savedNotifications));
-      }
-    };
-
-    fetchProducts();
-
-    // Set up local storage event listener for real-time updates
-    const handleStorageChange = (e) => {
-      if (e.key === "inventoryUpdate") {
-        const updatedProduct = JSON.parse(e.newValue);
-        updateProductStock(updatedProduct.id, updatedProduct.quantity);
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
-  // Save products to localStorage when updated
   useEffect(() => {
-    if (products.length > 0) {
-      localStorage.setItem("inventory-products", JSON.stringify(products));
+    if (!isAuthenticated) {
+      setProducts([]);
+      setError("");
+      setLoading(false);
+      return;
     }
-  }, [products]);
 
-  // Save auto-reorder settings when changed
+    refreshProducts();
+  }, [isAuthenticated, refreshProducts]);
+
   useEffect(() => {
-    localStorage.setItem(
-      "auto-reorder-enabled",
-      JSON.stringify(autoReorderEnabled)
+    setStats(buildStats(products, autoReorderEnabled, autoReorderThreshold));
+    setReorderNotifications((prev) =>
+      mergeNotifications(products, autoReorderEnabled, autoReorderThreshold, prev)
     );
-    localStorage.setItem(
-      "auto-reorder-threshold",
-      autoReorderThreshold.toString()
-    );
+  }, [products, autoReorderEnabled, autoReorderThreshold]);
 
-    // Recalculate low stock items based on new settings
-    if (products.length > 0) {
-      const lowStock = products.filter((p) => {
-        if (autoReorderEnabled) {
-          return p.stock <= autoReorderThreshold;
-        } else {
-          return p.stock <= p.reorderLevel;
-        }
-      });
-
-      setStats((prevStats) => ({
-        ...prevStats,
-        lowStockItems: lowStock.length,
-      }));
+  const recordInventoryUpdate = useCallback((product, quantityChange, type) => {
+    if (!product || !quantityChange) {
+      return;
     }
-  }, [autoReorderEnabled, autoReorderThreshold, products]);
 
-  // Save notifications when changed
-  useEffect(() => {
-    localStorage.setItem(
-      "reorder-notifications",
-      JSON.stringify(reorderNotifications)
+    setInventoryUpdates((prev) => [
+      {
+        id: `${product.id}-${Date.now()}`,
+        productId: product.id,
+        productName: product.name,
+        quantity: Math.abs(quantityChange),
+        timestamp: new Date().toISOString(),
+        type,
+      },
+      ...prev,
+    ].slice(0, 10));
+  }, []);
+
+  const updateProductStock = useCallback(
+    (productId, quantityChange, type = "sale") => {
+      setProducts((prevProducts) =>
+        prevProducts.map((product) => {
+          if (product.id !== productId) {
+            return product;
+          }
+
+          const newStock =
+            type === "restock"
+              ? product.stock + quantityChange
+              : Math.max(0, product.stock - quantityChange);
+
+          const updatedProduct = {
+            ...product,
+            stock: newStock,
+            status:
+              newStock <= 0
+                ? "Out of Stock"
+                : newStock <= product.reorderLevel
+                ? "Low Stock"
+                : "In Stock",
+          };
+
+          recordInventoryUpdate(updatedProduct, quantityChange, type);
+          return updatedProduct;
+        })
+      );
+    },
+    [recordInventoryUpdate]
+  );
+
+  const addProduct = useCallback(async (productToAdd) => {
+    const stock = Number(productToAdd.stock || 0);
+    const reorderLevel =
+      Number(productToAdd.reorderLevel) || Math.max(1, Math.floor(stock * 0.2));
+
+    const payload = {
+      ...productToAdd,
+      price: Number(productToAdd.price),
+      cost: Number(productToAdd.cost || productToAdd.price),
+      stock,
+      reorderLevel,
+    };
+
+    const response = await api.post("/api/products", payload);
+    setProducts((prevProducts) => [...prevProducts, response.data]);
+    return response.data;
+  }, []);
+
+  const toggleAutoReorder = (enabled) => {
+    setAutoReorderEnabled(enabled);
+  };
+
+  const updateAutoReorderThreshold = (threshold) => {
+    setAutoReorderThreshold(Math.max(1, Number(threshold) || 1));
+  };
+
+  const clearReorderNotification = (notificationId) => {
+    setReorderNotifications((prev) =>
+      prev.filter((notification) => notification.id !== notificationId)
     );
-  }, [reorderNotifications]);
+  };
 
-  // Context value for real-time inventory access across components
   const inventoryContextValue = {
     products,
+    stats,
+    loading,
+    error,
+    inventoryUpdates,
+    refreshProducts,
     updateProductStock,
     addProduct,
-    stats,
     autoReorderEnabled,
     autoReorderThreshold,
     reorderNotifications,
@@ -507,9 +357,10 @@ const InventoryManagerDashboard = () => {
 
   const [activeTab, setActiveTab] = useState(0);
   const [viewMode, setViewMode] = useState("dashboard"); // dashboard, products, suppliers, purchaseOrders
-  const [loadingStats, setLoadingStats] = useState(true);
-  const [loadingProducts, setLoadingProducts] = useState(true);
   const [lowStockProducts, setLowStockProducts] = useState([]);
+  const [savingProduct, setSavingProduct] = useState(false);
+  const loadingStats = inventoryContext?.loading ?? true;
+  const loadingProducts = inventoryContext?.loading ?? true;
 
   // Add product dialog state
   const [addProductDialogOpen, setAddProductDialogOpen] = useState(false);
@@ -539,8 +390,6 @@ const InventoryManagerDashboard = () => {
   // Update low stock products whenever inventory context changes
   useEffect(() => {
     if (inventoryContext && inventoryContext.products) {
-      // When autoReorderEnabled is true, consider products with stock <= autoReorderThreshold as low stock
-      // Otherwise, use the product's own reorderLevel
       const lowStock = inventoryContext.products.filter((p) => {
         if (inventoryContext.autoReorderEnabled) {
           return p.stock <= inventoryContext.autoReorderThreshold;
@@ -550,20 +399,11 @@ const InventoryManagerDashboard = () => {
       });
 
       setLowStockProducts(lowStock);
-      setLoadingProducts(false);
-      setLoadingStats(false);
     }
   }, [inventoryContext]);
 
-  // Update low stock products specifically when auto-reorder settings change
   useEffect(() => {
     if (inventoryContext && inventoryContext.products) {
-      console.log(
-        "Auto-reorder settings changed. Threshold:",
-        inventoryContext.autoReorderThreshold
-      );
-      console.log("Auto-reorder enabled:", inventoryContext.autoReorderEnabled);
-
       const lowStock = inventoryContext.products.filter((p) => {
         if (inventoryContext.autoReorderEnabled) {
           return p.stock <= inventoryContext.autoReorderThreshold;
@@ -571,8 +411,6 @@ const InventoryManagerDashboard = () => {
           return p.stock <= p.reorderLevel;
         }
       });
-
-      console.log("Low stock products count:", lowStock.length);
       setLowStockProducts(lowStock);
     }
   }, [
@@ -617,39 +455,19 @@ const InventoryManagerDashboard = () => {
   };
 
   // Handle adding a new product
-  const handleAddProduct = () => {
-    const productToAdd = {
-      id: inventoryContext.products.length + 1,
-      ...newProduct,
-      price: parseFloat(newProduct.price),
-      stock: parseInt(newProduct.stock),
-      reorderLevel: Math.floor(parseInt(newProduct.stock) * 0.2), // Set reorder level at 20% of stock
-      status:
-        parseInt(newProduct.stock) > parseInt(newProduct.stock) * 0.2
-          ? "In Stock"
-          : "Low Stock",
-      imageUrl: newProduct.imageUrl || "https://via.placeholder.com/150",
-    };
-
-    // Add the product using context
-    inventoryContext.addProduct(productToAdd);
-
-    // Update low stock products if needed
-    if (productToAdd.stock < productToAdd.reorderLevel) {
-      setLowStockProducts((prev) => [...prev, productToAdd]);
+  const handleAddProduct = async () => {
+    try {
+      setSavingProduct(true);
+      await inventoryContext.addProduct({
+        ...newProduct,
+        imageUrl: newProduct.imageUrl || "https://via.placeholder.com/150",
+      });
+      handleCloseAddProductDialog();
+    } catch (error) {
+      console.error("Error adding product:", error);
+    } finally {
+      setSavingProduct(false);
     }
-
-    // Store in localStorage for real-time sync with sales dashboard
-    localStorage.setItem("newProductAdded", JSON.stringify(productToAdd));
-
-    // Trigger storage event for other components to react
-    const storageEvent = new Event("storage");
-    storageEvent.key = "newProductAdded";
-    storageEvent.newValue = JSON.stringify(productToAdd);
-    window.dispatchEvent(storageEvent);
-
-    // Close the dialog
-    handleCloseAddProductDialog();
   };
 
   // Handle form change for new product
@@ -1027,6 +845,7 @@ const InventoryManagerDashboard = () => {
                 color="primary"
                 startIcon={<SaveIcon />}
                 disabled={
+                  savingProduct ||
                   !newProduct.name ||
                   !newProduct.sku ||
                   !newProduct.category ||
@@ -1034,7 +853,7 @@ const InventoryManagerDashboard = () => {
                   !newProduct.stock
                 }
               >
-                Add Product
+                {savingProduct ? "Saving..." : "Add Product"}
               </Button>
             </DialogActions>
           </Dialog>

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import axios from "axios";
 import {
   Box,
   Typography,
@@ -33,61 +34,20 @@ import {
   LocationOn as LocationIcon,
 } from "@mui/icons-material";
 
-const SupplierManagement = () => {
-  // Mock supplier data
-  const mockSuppliers = [
-    {
-      id: 1,
-      name: "Tribal Art Collective",
-      contact: "Rajesh Singh",
-      email: "contact@tribalart.co.in",
-      phone: "9876543210",
-      address: "Jagdalpur, Bastar, Chhattisgarh",
-      category: "Handicrafts",
-      status: "Active",
-    },
-    {
-      id: 2,
-      name: "Chhattisgarh Textiles Ltd",
-      contact: "Priya Sharma",
-      email: "orders@chhattisgarhfabrics.com",
-      phone: "8765432109",
-      address: "Raipur, Chhattisgarh",
-      category: "Textiles",
-      status: "Active",
-    },
-    {
-      id: 3,
-      name: "Eco-Friendly Packaging",
-      contact: "Amit Kumar",
-      email: "info@ecofriendly.in",
-      phone: "7654321098",
-      address: "Bilaspur, Chhattisgarh",
-      category: "Packaging",
-      status: "Inactive",
-    },
-    {
-      id: 4,
-      name: "Premium Stationery Suppliers",
-      contact: "Sunita Verma",
-      email: "orders@premiumstationery.com",
-      phone: "9567843210",
-      address: "Delhi, India",
-      category: "Stationery",
-      status: "Active",
-    },
-    {
-      id: 5,
-      name: "Dhokra Art Association",
-      contact: "Rakesh Baghel",
-      email: "dhokraartcg@gmail.com",
-      phone: "8876543210",
-      address: "Kondagaon, Chhattisgarh",
-      category: "Tribal Art",
-      status: "Active",
-    },
-  ];
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
+const emptySupplier = {
+  name: "",
+  contactPerson: "",
+  email: "",
+  phone: "",
+  address: "",
+  categories: "",
+  status: "Active",
+  notes: "",
+};
+
+const SupplierManagement = () => {
   const [suppliers, setSuppliers] = useState([]);
   const [filteredSuppliers, setFilteredSuppliers] = useState([]);
   const [search, setSearch] = useState("");
@@ -98,194 +58,174 @@ const SupplierManagement = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [supplierToDelete, setSupplierToDelete] = useState(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [newSupplier, setNewSupplier] = useState({
-    name: "",
-    contact: "",
-    email: "",
-    phone: "",
-    address: "",
-    category: "",
-    status: "Active",
-  });
-  const [successMessage, setSuccessMessage] = useState("");
+  const [newSupplier, setNewSupplier] = useState(emptySupplier);
+  const [message, setMessage] = useState({ type: "", text: "" });
+  const [loading, setLoading] = useState(true);
 
-  // Load suppliers on mount
+  const loadSuppliers = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(`${API_URL}/suppliers`);
+      setSuppliers(response.data);
+      setFilteredSuppliers(response.data);
+    } catch (error) {
+      console.error("Error loading suppliers:", error);
+      setMessage({
+        type: "error",
+        text: error.response?.data?.message || "Failed to load suppliers.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    // In a real app, you would fetch from an API
-    setSuppliers(mockSuppliers);
+    loadSuppliers();
   }, []);
 
-  // Filter suppliers when search changes
   useEffect(() => {
-    if (!suppliers.length) {
-      setFilteredSuppliers([]);
-      return;
-    }
-
     const lowercasedSearch = search.toLowerCase();
-    const filtered = suppliers.filter(
-      (supplier) =>
+    const filtered = suppliers.filter((supplier) => {
+      const categories = Array.isArray(supplier.categories)
+        ? supplier.categories.join(", ")
+        : supplier.categories || "";
+
+      return (
         supplier.name.toLowerCase().includes(lowercasedSearch) ||
-        supplier.contact.toLowerCase().includes(lowercasedSearch) ||
-        supplier.category.toLowerCase().includes(lowercasedSearch) ||
+        (supplier.contactPerson || "").toLowerCase().includes(lowercasedSearch) ||
+        categories.toLowerCase().includes(lowercasedSearch) ||
         supplier.email.toLowerCase().includes(lowercasedSearch)
-    );
+      );
+    });
 
     setFilteredSuppliers(filtered);
   }, [suppliers, search]);
 
-  // Handle search change
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
     setPage(0);
   };
 
-  // Handle page change
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
 
-  // Handle rows per page change
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  // Open add supplier dialog
-  const handleAddSupplier = () => {
-    setAddDialogOpen(true);
-  };
-
-  // Close add supplier dialog
   const handleCloseAddDialog = () => {
     setAddDialogOpen(false);
-    setNewSupplier({
-      name: "",
-      contact: "",
-      email: "",
-      phone: "",
-      address: "",
-      category: "",
-      status: "Active",
-    });
+    setNewSupplier(emptySupplier);
   };
 
-  // Handle form field change in add dialog
-  const handleAddFormChange = (e) => {
-    const { name, value } = e.target;
-    setNewSupplier({
-      ...newSupplier,
-      [name]: value,
-    });
-  };
-
-  // Save new supplier
-  const handleSaveNewSupplier = () => {
-    const supplierToAdd = {
-      ...newSupplier,
-      id: suppliers.length + 1, // In a real app, the ID would be generated by the backend
-    };
-
-    // Add to local state
-    setSuppliers([...suppliers, supplierToAdd]);
-
-    // Show success message
-    setSuccessMessage(`Supplier "${supplierToAdd.name}" added successfully.`);
-    setTimeout(() => {
-      setSuccessMessage("");
-    }, 3000);
-
-    // Close dialog
-    handleCloseAddDialog();
-  };
-
-  // Open edit dialog
-  const handleEditSupplier = (supplier) => {
-    setCurrentSupplier({ ...supplier });
-    setEditDialogOpen(true);
-  };
-
-  // Close edit dialog
   const handleCloseEditDialog = () => {
     setEditDialogOpen(false);
     setCurrentSupplier(null);
   };
 
-  // Handle form field change in edit dialog
-  const handleEditFormChange = (e) => {
-    const { name, value } = e.target;
-    setCurrentSupplier({
-      ...currentSupplier,
-      [name]: value,
-    });
-  };
-
-  // Save supplier changes
-  const handleSaveSupplier = () => {
-    // Update in local state
-    setSuppliers(
-      suppliers.map((supplier) =>
-        supplier.id === currentSupplier.id ? currentSupplier : supplier
-      )
-    );
-
-    // Show success message
-    setSuccessMessage(
-      `Supplier "${currentSupplier.name}" updated successfully.`
-    );
-    setTimeout(() => {
-      setSuccessMessage("");
-    }, 3000);
-
-    // Close dialog
-    handleCloseEditDialog();
-  };
-
-  // Open delete confirmation dialog
-  const handleDeleteClick = (supplier) => {
-    setSupplierToDelete(supplier);
-    setDeleteDialogOpen(true);
-  };
-
-  // Close delete dialog
   const handleCloseDeleteDialog = () => {
     setDeleteDialogOpen(false);
     setSupplierToDelete(null);
   };
 
-  // Confirm supplier deletion
-  const handleConfirmDelete = () => {
-    // Remove from local state
-    setSuppliers(
-      suppliers.filter((supplier) => supplier.id !== supplierToDelete.id)
-    );
-
-    // Show success message
-    setSuccessMessage(
-      `Supplier "${supplierToDelete.name}" deleted successfully.`
-    );
-    setTimeout(() => {
-      setSuccessMessage("");
-    }, 3000);
-
-    // Close dialog
-    handleCloseDeleteDialog();
+  const handleAddFormChange = (e) => {
+    const { name, value } = e.target;
+    setNewSupplier((prev) => ({ ...prev, [name]: value }));
   };
+
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setCurrentSupplier((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const normalizeSupplierPayload = (supplier) => ({
+    name: supplier.name,
+    contactPerson: supplier.contactPerson,
+    email: supplier.email,
+    phone: supplier.phone,
+    address: supplier.address,
+    categories: supplier.categories
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean),
+    notes: supplier.notes,
+    isActive: supplier.status === "Active",
+  });
+
+  const handleSaveNewSupplier = async () => {
+    try {
+      await axios.post(`${API_URL}/suppliers`, normalizeSupplierPayload(newSupplier));
+      setMessage({ type: "success", text: `Supplier "${newSupplier.name}" added successfully.` });
+      handleCloseAddDialog();
+      loadSuppliers();
+    } catch (error) {
+      console.error("Error creating supplier:", error);
+      setMessage({
+        type: "error",
+        text: error.response?.data?.message || "Failed to create supplier.",
+      });
+    }
+  };
+
+  const handleSaveSupplier = async () => {
+    try {
+      await axios.put(
+        `${API_URL}/suppliers/${currentSupplier._id || currentSupplier.id}`,
+        normalizeSupplierPayload(currentSupplier)
+      );
+      setMessage({
+        type: "success",
+        text: `Supplier "${currentSupplier.name}" updated successfully.`,
+      });
+      handleCloseEditDialog();
+      loadSuppliers();
+    } catch (error) {
+      console.error("Error updating supplier:", error);
+      setMessage({
+        type: "error",
+        text: error.response?.data?.message || "Failed to update supplier.",
+      });
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    try {
+      await axios.delete(`${API_URL}/suppliers/${supplierToDelete._id || supplierToDelete.id}`);
+      setMessage({
+        type: "success",
+        text: `Supplier "${supplierToDelete.name}" deleted successfully.`,
+      });
+      handleCloseDeleteDialog();
+      loadSuppliers();
+    } catch (error) {
+      console.error("Error deleting supplier:", error);
+      setMessage({
+        type: "error",
+        text: error.response?.data?.message || "Failed to delete supplier.",
+      });
+    }
+  };
+
+  const toFormSupplier = (supplier) => ({
+    ...supplier,
+    contactPerson: supplier.contactPerson || supplier.contact || "",
+    categories: Array.isArray(supplier.categories)
+      ? supplier.categories.join(", ")
+      : supplier.categories || "",
+    status: supplier.status || (supplier.isActive ? "Active" : "Inactive"),
+    notes: supplier.notes || "",
+  });
 
   return (
     <Box>
-      {/* Success message alert */}
-      {successMessage && (
-        <Alert
-          severity="success"
-          sx={{ mb: 2 }}
-          onClose={() => setSuccessMessage("")}
-        >
-          {successMessage}
+      {message.text && (
+        <Alert severity={message.type} sx={{ mb: 2 }} onClose={() => setMessage({ type: "", text: "" })}>
+          {message.text}
         </Alert>
       )}
 
-      {/* Search and Add toolbar */}
       <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between" }}>
         <TextField
           placeholder="Search suppliers..."
@@ -302,127 +242,74 @@ const SupplierManagement = () => {
             ),
           }}
         />
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={handleAddSupplier}
-        >
+        <Button variant="contained" color="primary" startIcon={<AddIcon />} onClick={() => setAddDialogOpen(true)}>
           Add Supplier
         </Button>
       </Box>
 
-      {/* Suppliers table */}
       <TableContainer component={Paper} sx={{ mb: 2 }}>
         <Table sx={{ minWidth: 800 }} size="medium">
           <TableHead>
             <TableRow sx={{ backgroundColor: "grey.50" }}>
-              <TableCell>
-                <Typography variant="subtitle2">Supplier Name</Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2">Contact Person</Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2">Contact Info</Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2">Address</Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2">Category</Typography>
-              </TableCell>
-              <TableCell>
-                <Typography variant="subtitle2">Status</Typography>
-              </TableCell>
-              <TableCell align="right">
-                <Typography variant="subtitle2">Actions</Typography>
-              </TableCell>
+              <TableCell><Typography variant="subtitle2">Supplier Name</Typography></TableCell>
+              <TableCell><Typography variant="subtitle2">Contact Person</Typography></TableCell>
+              <TableCell><Typography variant="subtitle2">Contact Info</Typography></TableCell>
+              <TableCell><Typography variant="subtitle2">Address</Typography></TableCell>
+              <TableCell><Typography variant="subtitle2">Categories</Typography></TableCell>
+              <TableCell><Typography variant="subtitle2">Status</Typography></TableCell>
+              <TableCell align="right"><Typography variant="subtitle2">Actions</Typography></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredSuppliers.length > 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
+                  <Typography variant="body1" color="text.secondary">Loading suppliers...</Typography>
+                </TableCell>
+              </TableRow>
+            ) : filteredSuppliers.length > 0 ? (
               filteredSuppliers
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((supplier) => (
-                  <TableRow key={supplier.id} hover>
-                    <TableCell>
-                      <Typography variant="body2" fontWeight={500}>
-                        {supplier.name}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {supplier.contact}
-                      </Typography>
-                    </TableCell>
+                  <TableRow key={supplier._id || supplier.id} hover>
+                    <TableCell><Typography variant="body2" fontWeight={500}>{supplier.name}</Typography></TableCell>
+                    <TableCell><Typography variant="body2">{supplier.contactPerson}</Typography></TableCell>
                     <TableCell>
                       <Box>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            alignItems: "center",
-                            mb: 0.5,
-                          }}
-                        >
-                          <EmailIcon
-                            fontSize="small"
-                            sx={{ mr: 0.5, color: "text.secondary" }}
-                          />
-                          <Typography variant="body2">
-                            {supplier.email}
-                          </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center", mb: 0.5 }}>
+                          <EmailIcon fontSize="small" sx={{ mr: 0.5, color: "text.secondary" }} />
+                          <Typography variant="body2">{supplier.email}</Typography>
                         </Box>
                         <Box sx={{ display: "flex", alignItems: "center" }}>
-                          <PhoneIcon
-                            fontSize="small"
-                            sx={{ mr: 0.5, color: "text.secondary" }}
-                          />
-                          <Typography variant="body2">
-                            {supplier.phone}
-                          </Typography>
+                          <PhoneIcon fontSize="small" sx={{ mr: 0.5, color: "text.secondary" }} />
+                          <Typography variant="body2">{supplier.phone}</Typography>
                         </Box>
                       </Box>
                     </TableCell>
                     <TableCell>
                       <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <LocationIcon
-                          fontSize="small"
-                          sx={{ mr: 0.5, color: "text.secondary" }}
-                        />
-                        <Typography variant="body2">
-                          {supplier.address}
-                        </Typography>
+                        <LocationIcon fontSize="small" sx={{ mr: 0.5, color: "text.secondary" }} />
+                        <Typography variant="body2">{supplier.address}</Typography>
                       </Box>
                     </TableCell>
                     <TableCell>
                       <Typography variant="body2">
-                        {supplier.category}
+                        {Array.isArray(supplier.categories) ? supplier.categories.join(", ") : supplier.categories}
                       </Typography>
                     </TableCell>
                     <TableCell>
                       <Chip
                         label={supplier.status}
                         size="small"
-                        color={
-                          supplier.status === "Active" ? "success" : "default"
-                        }
+                        color={supplier.status === "Active" ? "success" : "default"}
                         sx={{ minWidth: "80px" }}
                       />
                     </TableCell>
                     <TableCell align="right">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => handleEditSupplier(supplier)}
-                      >
+                      <IconButton size="small" color="primary" onClick={() => { setCurrentSupplier(toFormSupplier(supplier)); setEditDialogOpen(true); }}>
                         <EditIcon fontSize="small" />
                       </IconButton>
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => handleDeleteClick(supplier)}
-                      >
+                      <IconButton size="small" color="error" onClick={() => { setSupplierToDelete(supplier); setDeleteDialogOpen(true); }}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
                     </TableCell>
@@ -431,9 +318,7 @@ const SupplierManagement = () => {
             ) : (
               <TableRow>
                 <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                  <Typography variant="body1" color="text.secondary">
-                    No suppliers found
-                  </Typography>
+                  <Typography variant="body1" color="text.secondary">No suppliers found</Typography>
                 </TableCell>
               </TableRow>
             )}
@@ -441,7 +326,6 @@ const SupplierManagement = () => {
         </Table>
       </TableContainer>
 
-      {/* Pagination */}
       <TablePagination
         rowsPerPageOptions={[5, 10, 25]}
         component="div"
@@ -452,290 +336,76 @@ const SupplierManagement = () => {
         onRowsPerPageChange={handleChangeRowsPerPage}
       />
 
-      {/* Add Supplier Dialog */}
-      <Dialog
-        open={addDialogOpen}
-        onClose={handleCloseAddDialog}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={addDialogOpen} onClose={handleCloseAddDialog} maxWidth="md" fullWidth>
         <DialogTitle>Add New Supplier</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}><TextField name="name" label="Supplier Name" value={newSupplier.name} onChange={handleAddFormChange} fullWidth required /></Grid>
+              <Grid item xs={12} sm={6}><TextField name="contactPerson" label="Contact Person" value={newSupplier.contactPerson} onChange={handleAddFormChange} fullWidth required /></Grid>
+              <Grid item xs={12} sm={6}><TextField name="email" label="Email" type="email" value={newSupplier.email} onChange={handleAddFormChange} fullWidth required /></Grid>
+              <Grid item xs={12} sm={6}><TextField name="phone" label="Phone" value={newSupplier.phone} onChange={handleAddFormChange} fullWidth required /></Grid>
+              <Grid item xs={12}><TextField name="address" label="Address" value={newSupplier.address} onChange={handleAddFormChange} fullWidth required /></Grid>
+              <Grid item xs={12} sm={6}><TextField name="categories" label="Categories (comma separated)" value={newSupplier.categories} onChange={handleAddFormChange} fullWidth /></Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  name="name"
-                  label="Supplier Name"
-                  value={newSupplier.name}
-                  onChange={handleAddFormChange}
-                  fullWidth
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="contact"
-                  label="Contact Person"
-                  value={newSupplier.contact}
-                  onChange={handleAddFormChange}
-                  fullWidth
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="email"
-                  label="Email"
-                  type="email"
-                  value={newSupplier.email}
-                  onChange={handleAddFormChange}
-                  fullWidth
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <EmailIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="phone"
-                  label="Phone"
-                  value={newSupplier.phone}
-                  onChange={handleAddFormChange}
-                  fullWidth
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <PhoneIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="address"
-                  label="Address"
-                  value={newSupplier.address}
-                  onChange={handleAddFormChange}
-                  fullWidth
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <LocationIcon fontSize="small" />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="category"
-                  label="Category"
-                  value={newSupplier.category}
-                  onChange={handleAddFormChange}
-                  fullWidth
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="status"
-                  label="Status"
-                  select
-                  value={newSupplier.status}
-                  onChange={handleAddFormChange}
-                  fullWidth
-                  required
-                  SelectProps={{
-                    native: true,
-                  }}
-                >
+                <TextField name="status" label="Status" select value={newSupplier.status} onChange={handleAddFormChange} fullWidth required SelectProps={{ native: true }}>
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </TextField>
               </Grid>
+              <Grid item xs={12}><TextField name="notes" label="Notes" value={newSupplier.notes} onChange={handleAddFormChange} fullWidth multiline rows={3} /></Grid>
             </Grid>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseAddDialog}>Cancel</Button>
-          <Button
-            onClick={handleSaveNewSupplier}
-            variant="contained"
-            color="primary"
-            startIcon={<SaveIcon />}
-            disabled={
-              !newSupplier.name ||
-              !newSupplier.contact ||
-              !newSupplier.email ||
-              !newSupplier.phone ||
-              !newSupplier.address ||
-              !newSupplier.category
-            }
-          >
+          <Button onClick={handleSaveNewSupplier} variant="contained" color="primary" startIcon={<SaveIcon />} disabled={!newSupplier.name || !newSupplier.email || !newSupplier.phone}>
             Add Supplier
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Edit Supplier Dialog */}
-      <Dialog
-        open={editDialogOpen}
-        onClose={handleCloseEditDialog}
-        maxWidth="md"
-        fullWidth
-      >
+      <Dialog open={editDialogOpen} onClose={handleCloseEditDialog} maxWidth="md" fullWidth>
         <DialogTitle>Edit Supplier</DialogTitle>
         <DialogContent>
           {currentSupplier && (
             <Box sx={{ mt: 2 }}>
               <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}><TextField name="name" label="Supplier Name" value={currentSupplier.name} onChange={handleEditFormChange} fullWidth required /></Grid>
+                <Grid item xs={12} sm={6}><TextField name="contactPerson" label="Contact Person" value={currentSupplier.contactPerson} onChange={handleEditFormChange} fullWidth required /></Grid>
+                <Grid item xs={12} sm={6}><TextField name="email" label="Email" type="email" value={currentSupplier.email} onChange={handleEditFormChange} fullWidth required /></Grid>
+                <Grid item xs={12} sm={6}><TextField name="phone" label="Phone" value={currentSupplier.phone} onChange={handleEditFormChange} fullWidth required /></Grid>
+                <Grid item xs={12}><TextField name="address" label="Address" value={currentSupplier.address} onChange={handleEditFormChange} fullWidth required /></Grid>
+                <Grid item xs={12} sm={6}><TextField name="categories" label="Categories (comma separated)" value={currentSupplier.categories} onChange={handleEditFormChange} fullWidth /></Grid>
                 <Grid item xs={12} sm={6}>
-                  <TextField
-                    name="name"
-                    label="Supplier Name"
-                    value={currentSupplier.name}
-                    onChange={handleEditFormChange}
-                    fullWidth
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    name="contact"
-                    label="Contact Person"
-                    value={currentSupplier.contact}
-                    onChange={handleEditFormChange}
-                    fullWidth
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    name="email"
-                    label="Email"
-                    type="email"
-                    value={currentSupplier.email}
-                    onChange={handleEditFormChange}
-                    fullWidth
-                    required
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <EmailIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    name="phone"
-                    label="Phone"
-                    value={currentSupplier.phone}
-                    onChange={handleEditFormChange}
-                    fullWidth
-                    required
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <PhoneIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12}>
-                  <TextField
-                    name="address"
-                    label="Address"
-                    value={currentSupplier.address}
-                    onChange={handleEditFormChange}
-                    fullWidth
-                    required
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LocationIcon fontSize="small" />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    name="category"
-                    label="Category"
-                    value={currentSupplier.category}
-                    onChange={handleEditFormChange}
-                    fullWidth
-                    required
-                  />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField
-                    name="status"
-                    label="Status"
-                    select
-                    value={currentSupplier.status}
-                    onChange={handleEditFormChange}
-                    fullWidth
-                    required
-                    SelectProps={{
-                      native: true,
-                    }}
-                  >
+                  <TextField name="status" label="Status" select value={currentSupplier.status} onChange={handleEditFormChange} fullWidth required SelectProps={{ native: true }}>
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
                   </TextField>
                 </Grid>
+                <Grid item xs={12}><TextField name="notes" label="Notes" value={currentSupplier.notes} onChange={handleEditFormChange} fullWidth multiline rows={3} /></Grid>
               </Grid>
             </Box>
           )}
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseEditDialog}>Cancel</Button>
-          <Button
-            onClick={handleSaveSupplier}
-            variant="contained"
-            color="primary"
-            startIcon={<SaveIcon />}
-            disabled={!currentSupplier}
-          >
+          <Button onClick={handleSaveSupplier} variant="contained" color="primary" startIcon={<SaveIcon />} disabled={!currentSupplier}>
             Save Changes
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={handleCloseDeleteDialog}
-        maxWidth="xs"
-        fullWidth
-      >
+      <Dialog open={deleteDialogOpen} onClose={handleCloseDeleteDialog} maxWidth="xs" fullWidth>
         <DialogTitle>Confirm Deletion</DialogTitle>
         <DialogContent>
           <Typography variant="body1">
-            Are you sure you want to delete supplier "{supplierToDelete?.name}"?
-            This action cannot be undone.
+            Are you sure you want to delete supplier "{supplierToDelete?.name}"? This action cannot be undone.
           </Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDeleteDialog}>Cancel</Button>
-          <Button
-            onClick={handleConfirmDelete}
-            variant="contained"
-            color="error"
-          >
+          <Button onClick={handleConfirmDelete} variant="contained" color="error">
             Delete
           </Button>
         </DialogActions>
