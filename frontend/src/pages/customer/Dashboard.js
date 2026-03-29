@@ -370,7 +370,7 @@ const CustomerDashboard = () => {
                     size="small"
                     color={
                       product.stock > 5
-                        ? "success"
+                        ? "info"
                         : product.stock > 0
                         ? "warning"
                         : "error"
@@ -580,7 +580,7 @@ const CustomerDashboard = () => {
               >
                 {order.id}
               </Typography>
-              <Chip icon={<CheckCircleIcon />} label={order.status} color="success" size="small" />
+              <Chip icon={<CheckCircleIcon />} label={order.status} color="info" size="small" />
             </Box>
 
             <Typography variant="body2" className="text-light" gutterBottom>
@@ -634,14 +634,40 @@ const CustomerDashboard = () => {
         maxWidth="xl"
         className="customer-dashboard-container sales-dashboard-container"
         sx={{
+          "--primary-color": "#1976d2",
+          "--primary-light": "#64b5f6",
+          "--primary-dark": "#0d47a1",
+          "--secondary-color": "#90caf9",
+          "--secondary-light": "#bbdefb",
+          "--secondary-dark": "#1565c0",
+          "--accent-color": "#5c6bc0",
+          "--text-tertiary": "#90caf9",
+          "--background-default": "#08172b",
+          "--background-dark": "#0a1b31",
+          "--background-light": "#112748",
+          "--background-paper": "#10243f",
+          "--border-color": "rgba(100, 181, 246, 0.25)",
+          "--card-background": "#0d2138",
+          "--glow-color": "rgba(33, 150, 243, 0.28)",
+          "--input-bg": "rgba(8, 23, 43, 0.78)",
+          "--hover-bg": "rgba(33, 150, 243, 0.14)",
+          "--active-bg": "rgba(33, 150, 243, 0.22)",
           mt: 3,
           mb: 4,
-          backgroundColor: alpha("#000", 0.6),
+          backgroundColor: alpha("#03101f", 0.78),
           backdropFilter: "blur(5px)",
           borderRadius: 2,
           padding: 3,
           boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
           color: "#fff",
+          "& .MuiAlert-standardInfo": {
+            backgroundColor: alpha("#1e88e5", 0.16),
+            color: "#bbdefb",
+            border: "1px solid rgba(30, 136, 229, 0.35)",
+          },
+          "& .MuiAlert-standardInfo .MuiAlert-icon": {
+            color: "#64b5f6",
+          },
         }}
       >
         <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -707,14 +733,29 @@ const CustomerDashboard = () => {
         )}
 
         {activeView === "shop" ? (
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={8}>
-              {renderProductGrid()}
+          <Box>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                {renderProductGrid()}
+              </Grid>
             </Grid>
-            <Grid item xs={12} md={4}>
-              {renderCart()}
-            </Grid>
-          </Grid>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                mt: 4,
+              }}
+            >
+              <Box
+                sx={{
+                  width: "100%",
+                  maxWidth: 520,
+                }}
+              >
+                {renderCart()}
+              </Box>
+            </Box>
+          </Box>
         ) : (
           renderOrderHistory()
         )}
@@ -920,7 +961,7 @@ const CustomerDashboard = () => {
         >
           <DialogContent>
             <Box display="flex" flexDirection="column" alignItems="center" p={2}>
-              <CheckCircleIcon color="success" sx={{ fontSize: 60, mb: 2 }} />
+              <CheckCircleIcon sx={{ fontSize: 60, mb: 2, color: "#64b5f6" }} />
               <Typography variant="h5" gutterBottom>
                 Order Placed Successfully!
               </Typography>
@@ -932,7 +973,7 @@ const CustomerDashboard = () => {
               </Typography>
 
               <Box my={2} width="100%">
-                <Alert severity="success">
+                <Alert severity="info">
                   Inventory has been updated from MongoDB and your order is now part of your account history.
                 </Alert>
               </Box>
