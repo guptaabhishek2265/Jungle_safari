@@ -9,6 +9,7 @@ import {
   Card,
   CardContent,
   CardMedia,
+  CardActions,
   Dialog,
   DialogContent,
   DialogActions,
@@ -338,10 +339,7 @@ const CustomerDashboard = () => {
       <Grid container spacing={3} className="grid-background">
         {products.map((product) => (
           <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
-            <Card
-              className="product-card"
-              sx={{ position: "relative", display: "flex", flexDirection: "column" }}
-            >
+            <Card className="product-card">
               <CardMedia
                 component="img"
                 height="140"
@@ -351,25 +349,6 @@ const CustomerDashboard = () => {
                 }
                 alt={product.name}
               />
-              <Button
-                startIcon={<CartIcon />}
-                variant="contained"
-                color="primary"
-                onClick={() => handleAddToCart(product)}
-                disabled={product.stock === 0}
-                className="primary-button"
-                sx={{
-                  position: "absolute",
-                  top: 12,
-                  right: 12,
-                  zIndex: 1,
-                  px: 2,
-                  py: 0.75,
-                  minWidth: "auto",
-                }}
-              >
-                {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
-              </Button>
               <CardContent className="card-content">
                 <Typography
                   variant="h6"
@@ -400,6 +379,19 @@ const CustomerDashboard = () => {
                   />
                 </Box>
               </CardContent>
+              <CardActions>
+                <Button
+                  startIcon={<CartIcon />}
+                  variant="contained"
+                  color="primary"
+                  fullWidth
+                  onClick={() => handleAddToCart(product)}
+                  disabled={product.stock === 0}
+                  className="primary-button"
+                >
+                  {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                </Button>
+              </CardActions>
             </Card>
           </Grid>
         ))}
