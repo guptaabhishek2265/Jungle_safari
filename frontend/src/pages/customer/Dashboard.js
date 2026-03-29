@@ -370,7 +370,7 @@ const CustomerDashboard = () => {
                     size="small"
                     color={
                       product.stock > 5
-                        ? "info"
+                        ? "primary"
                         : product.stock > 0
                         ? "warning"
                         : "error"
@@ -580,7 +580,7 @@ const CustomerDashboard = () => {
               >
                 {order.id}
               </Typography>
-              <Chip icon={<CheckCircleIcon />} label={order.status} color="info" size="small" />
+              <Chip icon={<CheckCircleIcon />} label={order.status} color="primary" size="small" />
             </Box>
 
             <Typography variant="body2" className="text-light" gutterBottom>
@@ -634,43 +634,51 @@ const CustomerDashboard = () => {
         maxWidth="xl"
         className="customer-dashboard-container sales-dashboard-container"
         sx={{
-          "--primary-color": "#1976d2",
-          "--primary-light": "#64b5f6",
-          "--primary-dark": "#0d47a1",
-          "--secondary-color": "#90caf9",
-          "--secondary-light": "#bbdefb",
-          "--secondary-dark": "#1565c0",
-          "--accent-color": "#5c6bc0",
-          "--text-tertiary": "#90caf9",
-          "--background-default": "#08172b",
-          "--background-dark": "#0a1b31",
-          "--background-light": "#112748",
-          "--background-paper": "#10243f",
-          "--border-color": "rgba(100, 181, 246, 0.25)",
-          "--card-background": "#0d2138",
-          "--glow-color": "rgba(33, 150, 243, 0.28)",
-          "--input-bg": "rgba(8, 23, 43, 0.78)",
-          "--hover-bg": "rgba(33, 150, 243, 0.14)",
-          "--active-bg": "rgba(33, 150, 243, 0.22)",
+          "--primary-color": "#c62828",
+          "--primary-light": "#ef5350",
+          "--primary-dark": "#8e0000",
+          "--secondary-color": "#ff8a80",
+          "--secondary-light": "#ffb4a9",
+          "--secondary-dark": "#b61827",
+          "--accent-color": "#d84315",
+          "--text-tertiary": "#ff8a80",
+          "--background-default": "#24090c",
+          "--background-dark": "#1f080b",
+          "--background-light": "#341116",
+          "--background-paper": "#2a0f14",
+          "--border-color": "rgba(239, 83, 80, 0.28)",
+          "--card-background": "#261014",
+          "--glow-color": "rgba(229, 57, 53, 0.28)",
+          "--input-bg": "rgba(31, 8, 11, 0.8)",
+          "--hover-bg": "rgba(239, 83, 80, 0.14)",
+          "--active-bg": "rgba(239, 83, 80, 0.22)",
           mt: 3,
           mb: 4,
-          backgroundColor: alpha("#03101f", 0.78),
+          backgroundColor: alpha("#140507", 0.82),
           backdropFilter: "blur(5px)",
           borderRadius: 2,
           padding: 3,
           boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
           color: "#fff",
           "& .MuiAlert-standardInfo": {
-            backgroundColor: alpha("#1e88e5", 0.16),
-            color: "#bbdefb",
-            border: "1px solid rgba(30, 136, 229, 0.35)",
+            backgroundColor: alpha("#d32f2f", 0.16),
+            color: "#ffcdd2",
+            border: "1px solid rgba(211, 47, 47, 0.35)",
           },
           "& .MuiAlert-standardInfo .MuiAlert-icon": {
-            color: "#64b5f6",
+            color: "#ef5350",
           },
         }}
       >
-        <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            mb: 3,
+            textAlign: "center",
+          }}
+        >
           <Typography
             variant="h4"
             gutterBottom
@@ -681,7 +689,17 @@ const CustomerDashboard = () => {
             Customer Dashboard
           </Typography>
 
-          <Box display="flex" alignItems="center">
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1.5,
+              flexWrap: "wrap",
+              width: "100%",
+              mt: 1,
+            }}
+          >
             <Button
               variant={activeView === "shop" ? "contained" : "outlined"}
               color="primary"
@@ -691,9 +709,9 @@ const CustomerDashboard = () => {
                 navigate("/customer");
               }}
               sx={{
-                mr: 1,
-                borderColor: "#fff",
-                color: activeView !== "shop" ? "#fff" : undefined,
+                minWidth: 160,
+                borderColor: "var(--primary-light)",
+                color: activeView !== "shop" ? "var(--primary-light)" : undefined,
               }}
               className={activeView === "shop" ? "primary-button" : ""}
             >
@@ -708,8 +726,9 @@ const CustomerDashboard = () => {
                 navigate("/customer/orders");
               }}
               sx={{
-                borderColor: "#fff",
-                color: activeView !== "orders" ? "#fff" : undefined,
+                minWidth: 160,
+                borderColor: "var(--primary-light)",
+                color: activeView !== "orders" ? "var(--primary-light)" : undefined,
               }}
               className={activeView === "orders" ? "secondary-button" : ""}
             >
@@ -961,7 +980,7 @@ const CustomerDashboard = () => {
         >
           <DialogContent>
             <Box display="flex" flexDirection="column" alignItems="center" p={2}>
-              <CheckCircleIcon sx={{ fontSize: 60, mb: 2, color: "#64b5f6" }} />
+              <CheckCircleIcon sx={{ fontSize: 60, mb: 2, color: "#ef5350" }} />
               <Typography variant="h5" gutterBottom>
                 Order Placed Successfully!
               </Typography>
