@@ -55,10 +55,6 @@ const CATEGORIES = [
   "Accessories",
 ];
 
-const DEFAULT_API_URL =
-  process.env.NODE_ENV === "production" ? "/api" : "http://localhost:5000/api";
-const API_URL = process.env.REACT_APP_API_URL || DEFAULT_API_URL;
-
 const ProductManagement = () => {
   const { user } = useAuth();
   const [products, setProducts] = useState([]);
@@ -98,6 +94,7 @@ const ProductManagement = () => {
   const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
       const response = await axios.get(`${API_URL}/products`);
 
@@ -113,6 +110,8 @@ const ProductManagement = () => {
   // Fetch suppliers for the product form
   const fetchSuppliers = useCallback(async () => {
     try {
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
       const response = await axios.get(`${API_URL}/suppliers`);
 
       setSuppliers(response.data);
@@ -162,6 +161,9 @@ const ProductManagement = () => {
         cost: productData.cost || productData.price, // Default to price if cost not provided
       };
 
+      // Add API_URL prefix to requests
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
       if (editingProduct) {
         // Update existing product
         await axios.put(
@@ -191,6 +193,8 @@ const ProductManagement = () => {
   // Delete a product
   const handleDeleteProduct = async (productId) => {
     try {
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+
       await axios.delete(`${API_URL}/products/${productId}`);
 
       showAlert("Product deleted successfully.");
@@ -295,6 +299,7 @@ const ProductManagement = () => {
   // Save product changes
   const handleSaveProductDialog = async () => {
     try {
+      const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
       await axios.put(`${API_URL}/products/${currentProduct._id || currentProduct.id}`, {
         name: currentProduct.name,
         category: currentProduct.category,

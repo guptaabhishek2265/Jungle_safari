@@ -34,9 +34,7 @@ import {
   LocationOn as LocationIcon,
 } from "@mui/icons-material";
 
-const DEFAULT_API_URL =
-  process.env.NODE_ENV === "production" ? "/api" : "http://localhost:5000/api";
-const API_URL = process.env.REACT_APP_API_URL || DEFAULT_API_URL;
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
 const emptySupplier = {
   name: "",
