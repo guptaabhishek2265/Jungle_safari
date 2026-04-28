@@ -4,6 +4,9 @@ import axios from "axios";
 // Create the auth context
 export const AuthContext = createContext();
 
+const DEFAULT_API_URL =
+  process.env.NODE_ENV === "production" ? "/api" : "http://localhost:5000/api";
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -12,7 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [error, setError] = useState(null);
 
   // Set up axios defaults
-  const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+  const API_URL = process.env.REACT_APP_API_URL || DEFAULT_API_URL;
 
   // Setup axios request interceptor to add the token
   useEffect(() => {

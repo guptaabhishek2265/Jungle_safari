@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
+const DEFAULT_API_URL =
+    process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000';
+
 const useSocket = () => {
     const [socket, setSocket] = useState(null);
     const [connected, setConnected] = useState(false);
 
     useEffect(() => {
         // Get the backend URL from environment
-        const backendUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
+        const apiUrl = process.env.REACT_APP_API_URL || DEFAULT_API_URL;
+        const backendUrl = apiUrl.replace(/\/api\/?$/, '') || window.location.origin;
 
         // Create socket connection
         const newSocket = io(backendUrl, {

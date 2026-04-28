@@ -1,6 +1,8 @@
 import axios from "axios";
 
-const rawApiUrl = process.env.REACT_APP_API_URL || "http://localhost:5000";
+const defaultApiUrl =
+  process.env.NODE_ENV === "production" ? "/api" : "http://localhost:5000";
+const rawApiUrl = process.env.REACT_APP_API_URL || defaultApiUrl;
 const normalizedBaseUrl = rawApiUrl.replace(/\/api\/?$/, "");
 
 // Create an instance of axios with default config
