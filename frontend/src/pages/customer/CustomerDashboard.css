@@ -133,6 +133,14 @@
   box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2) !important;
 }
 
+.product-add-button {
+  background-color: #2e7d32 !important;
+}
+
+.product-add-button:hover {
+  background-color: #1b5e20 !important;
+}
+
 .secondary-button {
   background-color: var(--secondary-color) !important;
   color: white !important;

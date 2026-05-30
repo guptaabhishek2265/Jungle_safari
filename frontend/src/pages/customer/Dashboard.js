@@ -357,7 +357,7 @@ const CustomerDashboard = () => {
                   fullWidth
                   onClick={() => handleAddToCart(product)}
                   disabled={product.stock === 0}
-                  className="primary-button"
+                  className="primary-button product-add-button"
                 >
                   {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
                 </Button>
