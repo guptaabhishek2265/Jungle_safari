@@ -3,7 +3,7 @@
 A comprehensive inventory management system for the Jungle Safari Souvenir Shop, built with React.js frontend and Node.js/Express backend.
 
 ## 🚀 Features
-
+## feature...
 - **Inventory Management**: Track products, stock levels, and categories
 - **Real-time Updates**: Live inventory monitoring with Socket.IO
 - **User Authentication**: Role-based access control (Admin, Inventory Manager, Employee)
