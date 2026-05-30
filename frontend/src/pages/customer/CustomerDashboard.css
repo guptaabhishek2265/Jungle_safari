@@ -86,6 +86,7 @@
   border: 1px solid var(--border-color) !important;
   transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s ease;
   height: 100%;
+  position: relative;
   border-radius: 12px !important;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15) !important;
   overflow: hidden;
@@ -103,8 +104,13 @@
 }
 
 .product-card-actions {
-  background-color: var(--card-background);
-  padding: 12px 16px 0 !important;
+  background-color: transparent;
+  left: 0;
+  padding: 0 10px !important;
+  position: absolute;
+  right: 0;
+  top: 38px;
+  z-index: 2;
 }
 
 .card-title {
