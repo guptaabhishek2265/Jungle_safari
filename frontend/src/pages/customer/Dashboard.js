@@ -351,15 +351,40 @@ const CustomerDashboard = () => {
               />
               <CardActions className="product-card-actions">
                 <Button
-                  startIcon={<CartIcon />}
                   variant="contained"
                   color="primary"
-                  fullWidth
                   onClick={() => handleAddToCart(product)}
                   disabled={product.stock === 0}
                   className="primary-button product-add-button"
+                  sx={{
+                    width: 76,
+                    minWidth: "76px !important",
+                    height: 76,
+                    borderRadius: "50% !important",
+                    backgroundColor: "#d32f2f !important",
+                    boxShadow: "0 6px 14px rgba(211, 47, 47, 0.35) !important",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 0.4,
+                    p: "8px !important",
+                    lineHeight: 1.05,
+                    textAlign: "center",
+                    "&:hover": {
+                      backgroundColor: "#b71c1c !important",
+                      boxShadow: "0 8px 18px rgba(183, 28, 28, 0.45) !important",
+                    },
+                    "&.Mui-disabled": {
+                      backgroundColor: "rgba(211, 47, 47, 0.45) !important",
+                      color: "rgba(255, 255, 255, 0.75) !important",
+                    },
+                  }}
                 >
-                  {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                  <CartIcon sx={{ fontSize: 18 }} />
+                  <Box component="span" sx={{ fontSize: 11, fontWeight: 700 }}>
+                    {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                  </Box>
                 </Button>
               </CardActions>
               <CardContent className="card-content">
