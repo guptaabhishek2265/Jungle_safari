@@ -17,7 +17,11 @@ async function connectToDatabase() {
   }
 
   connectingPromise = mongoose
-    .connect(MONGO_URI)
+    .connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 30000,
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 30000,
+    })
     .then((connection) => {
       cachedConnection = connection;
       console.log("Connected to MongoDB");
