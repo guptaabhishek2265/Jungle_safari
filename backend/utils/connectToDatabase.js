@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const MONGO_URI =
   process.env.MONGO_URI ||
-  "mongodb+srv://test-yt:2QLGZiCAG0mkLhRS@cluster0.qyubw.mongodb.net/jungle_safari_inventory";
+  "mongodb+srv://abhishek23102_db_user:Mummy1234@cluster0.eynubcv.mongodb.net/jungle_safari_inventory?appName=Cluster0";
 
 let cachedConnection = null;
 let connectingPromise = null;
