@@ -1,0 +1,26 @@
+# ==============================================================================
+# INVENTORY MANAGER TEST SUITES
+# ==============================================================================
+
+[suite: smoke]
+[test: Inventory Dashboard Load]
+[labels: @critical @dashboard]
+Check the inventory dashboard and take a screenshot.
+
+[suite: sanity]
+[test: Supplier Management]
+[labels: @suppliers @navigation]
+Click the Suppliers button and take a screenshot.
+
+[suite: sanity]
+[test: Purchase Orders]
+[labels: @orders @navigation]
+Click the Purchase Orders button and take a screenshot.
+
+[suite: regression]
+[test: Full Inventory Navigation Flow]
+[labels: @e2e @inventory]
+Check the inventory dashboard and take a screenshot.
+Click the Suppliers button and take a screenshot.
+Click the Purchase Orders button and take a screenshot.
+Click the Dashboard button to return home and take a screenshot.
