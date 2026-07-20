@@ -5,10 +5,11 @@ on:
     branches: [main]   # fires every time you push code to Jungle Safari
 
 jobs:
-  trigger-tests:
+  # ── Job 1: Customer Dashboard tests ────────────────────────────────────────
+  trigger-customer-tests:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger AI Visual Testing Engine
+      - name: Trigger Customer Dashboard Tests
         run: |
           curl -X POST \
             https://api.github.com/repos/guptaabhishek2265/Ai_visual_Testing/dispatches \
@@ -22,6 +23,30 @@ jobs:
                 "email":          "c@gmail.com",
                 "password":       "${{ secrets.APP_PASSWORD }}",
                 "steps_url":      "https://raw.githubusercontent.com/guptaabhishek2265/Jungle_safari/main/visual-tests/customer-steps.txt",
+                "source_repo":    "guptaabhishek2265/Jungle_safari",
+                "commit_message": "${{ github.event.head_commit.message }}",
+                "commit_sha":     "${{ github.sha }}"
+              }
+            }'
+
+  # ── Job 2: Inventory Dashboard tests ───────────────────────────────────────
+  trigger-inventory-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Inventory Dashboard Tests
+        run: |
+          curl -X POST \
+            https://api.github.com/repos/guptaabhishek2265/Ai_visual_Testing/dispatches \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Authorization: token ${{ secrets.VISUAL_TESTING_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "event_type": "run-visual-tests",
+              "client_payload": {
+                "app_url":        "https://jungle-safari-e9on.vercel.app/login",
+                "email":          "inv@gmail.com",
+                "password":       "${{ secrets.INV_PASSWORD }}",
+                "steps_url":      "https://raw.githubusercontent.com/guptaabhishek2265/Jungle_safari/main/visual-tests/inventory-steps.txt",
                 "source_repo":    "guptaabhishek2265/Jungle_safari",
                 "commit_message": "${{ github.event.head_commit.message }}",
                 "commit_sha":     "${{ github.sha }}"
