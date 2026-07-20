@@ -1,0 +1,9 @@
+[suite: smoke]
+[test: Customer Dashboard]
+[labels: @critical]
+Check the customer dashboard and take a screenshot.
+
+[suite: sanity]
+[test: Menu availability]
+[labels: @menu]
+Browse the food menu and take a screenshot.
