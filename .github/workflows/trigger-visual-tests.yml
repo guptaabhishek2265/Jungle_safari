@@ -21,7 +21,7 @@ jobs:
                 "app_url":        "https://jungle-safari-e9on.vercel.app/login",
                 "email":          "c@gmail.com",
                 "password":       "${{ secrets.APP_PASSWORD }}",
-                "steps_url":      "https://raw.githubusercontent.com/guptaabhishek2265/Jungle_safari/main/visual-tests/steps.txt",
+                "steps_url":      "https://raw.githubusercontent.com/guptaabhishek2265/Jungle_safari/main/visual-tests/customer-steps.txt",
                 "source_repo":    "guptaabhishek2265/Jungle_safari",
                 "commit_message": "${{ github.event.head_commit.message }}",
                 "commit_sha":     "${{ github.sha }}"
