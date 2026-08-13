@@ -19,7 +19,7 @@ jobs:
             -d '{
               "event_type": "run-visual-tests",
               "client_payload": {
-                "app_url":        "https://jungle-safari-e9on.vercel.app/login",
+                "app_url":        "https://jungle-safari-2ywt.vercel.app/login",
                 "email":          "c@gmail.com",
                 "password":       "${{ secrets.CUSTOMER_PASSWORD }}",
                 "steps_url":      "https://raw.githubusercontent.com/guptaabhishek2265/Jungle_safari/main/visual-tests/customer-steps.txt",
@@ -43,7 +43,7 @@ jobs:
             -d '{
               "event_type": "run-visual-tests",
               "client_payload": {
-                "app_url":        "https://jungle-safari-e9on.vercel.app/login",
+                "app_url":        "https://jungle-safari-2ywt.vercel.app/login",
                 "email":          "inv@gmail.com",
                 "password":       "${{ secrets.INVENTORY_PASSWORD }}",
                 "steps_url":      "https://raw.githubusercontent.com/guptaabhishek2265/Jungle_safari/main/visual-tests/inventory-steps.txt",
