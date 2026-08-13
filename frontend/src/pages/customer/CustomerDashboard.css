@@ -109,8 +109,9 @@
   padding: 0 10px !important;
   position: absolute;
   right: 0;
-  top: 38px;
+  top: 12px;
   z-index: 2;
+  justify-content: flex-end;
 }
 
 .card-title {
