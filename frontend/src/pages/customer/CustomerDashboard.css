@@ -22,8 +22,8 @@
 
 .customer-hero::before {
   background:
-    linear-gradient(135deg, rgba(239, 83, 80, 0.2), rgba(255, 138, 128, 0.08)),
-    url("/images/img6.jpg");
+    radial-gradient(circle at 16% 24%, rgba(255, 138, 128, 0.2), transparent 34%),
+    linear-gradient(135deg, rgba(239, 83, 80, 0.22), rgba(216, 67, 21, 0.08));
   background-position: center;
   background-size: cover;
   border: 1px solid rgba(255, 255, 255, 0.08);
