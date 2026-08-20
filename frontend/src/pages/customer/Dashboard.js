@@ -39,11 +39,13 @@ import {
   Store as StoreIcon,
   CreditCard as CreditCardIcon,
   AccountBalance as AccountBalanceIcon,
+  Inventory2 as InventoryIcon,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
 import { InventoryContext } from "../inventory/Dashboard";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../utils/api";
+import "./CustomerDashboard.css";
 
 const DarkOverlay = ({ children }) => (
   <Box
@@ -133,6 +135,12 @@ const CustomerDashboard = () => {
     taxAmount: 0,
     totalAmount: 0,
   });
+
+  const cartItemCount = cart.reduce((total, item) => total + item.quantity, 0);
+  const availableProducts = products.filter((product) => product.stock > 0).length;
+  const lowStockProducts = products.filter(
+    (product) => product.stock > 0 && product.stock <= 5
+  ).length;
 
   useEffect(() => {
     setActiveView(location.pathname.includes("/orders") ? "orders" : "shop");
@@ -340,53 +348,22 @@ const CustomerDashboard = () => {
         {products.map((product) => (
           <Grid item xs={12} sm={6} md={4} lg={3} key={product.id}>
             <Card className="product-card">
-              <CardMedia
-                component="img"
-                height="140"
-                image={
-                  product.imageUrl ||
-                  `https://source.unsplash.com/random/300x200?${(product.category || "souvenir").toLowerCase()}`
-                }
-                alt={product.name}
-              />
-              <CardActions className="product-card-actions">
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => handleAddToCart(product)}
-                  disabled={product.stock === 0}
-                  className="primary-button product-add-button"
-                  sx={{
-                    width: 76,
-                    minWidth: "76px !important",
-                    height: 76,
-                    borderRadius: "50% !important",
-                    backgroundColor: "#1565c0 !important",
-                    boxShadow: "0 6px 14px rgba(21, 101, 192, 0.35) !important",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 0.4,
-                    p: "8px !important",
-                    lineHeight: 1.05,
-                    textAlign: "center",
-                    "&:hover": {
-                      backgroundColor: "#0d47a1 !important",
-                      boxShadow: "0 8px 18px rgba(13, 71, 161, 0.45) !important",
-                    },
-                    "&.Mui-disabled": {
-                      backgroundColor: "rgba(21, 101, 192, 0.45) !important",
-                      color: "rgba(255, 255, 255, 0.75) !important",
-                    },
-                  }}
-                >
-                  <CartIcon sx={{ fontSize: 18 }} />
-                  <Box component="span" sx={{ fontSize: 11, fontWeight: 700 }}>
-                    {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
-                  </Box>
-                </Button>
-              </CardActions>
+              <Box className="product-media-wrap">
+                <CardMedia
+                  component="img"
+                  className="product-media"
+                  image={
+                    product.imageUrl ||
+                    `https://source.unsplash.com/random/300x200?${(product.category || "souvenir").toLowerCase()}`
+                  }
+                  alt={product.name}
+                />
+                <Chip
+                  label={product.category || "Safari Shop"}
+                  size="small"
+                  className="product-category-chip"
+                />
+              </Box>
               <CardContent className="card-content">
                 <Typography
                   variant="h6"
@@ -417,6 +394,18 @@ const CustomerDashboard = () => {
                   />
                 </Box>
               </CardContent>
+              <CardActions className="product-card-actions">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<CartIcon />}
+                  onClick={() => handleAddToCart(product)}
+                  disabled={product.stock === 0}
+                  className="primary-button product-add-button"
+                >
+                  {product.stock === 0 ? "Out of Stock" : "Add"}
+                </Button>
+              </CardActions>
             </Card>
           </Grid>
         ))}
@@ -667,23 +656,23 @@ const CustomerDashboard = () => {
           "--secondary-dark": "#b61827",
           "--accent-color": "#d84315",
           "--text-tertiary": "#ff8a80",
-          "--background-default": "#24090c",
-          "--background-dark": "#1f080b",
-          "--background-light": "#341116",
-          "--background-paper": "#2a0f14",
+          "--background-default": "#1c0a0d",
+          "--background-dark": "#19090c",
+          "--background-light": "#2a1116",
+          "--background-paper": "#271015",
           "--border-color": "rgba(239, 83, 80, 0.28)",
-          "--card-background": "#261014",
+          "--card-background": "rgba(39, 16, 21, 0.88)",
           "--glow-color": "rgba(229, 57, 53, 0.28)",
           "--input-bg": "rgba(31, 8, 11, 0.8)",
           "--hover-bg": "rgba(239, 83, 80, 0.14)",
           "--active-bg": "rgba(239, 83, 80, 0.22)",
-          mt: 3,
+          mt: 2,
           mb: 4,
-          backgroundColor: alpha("#140507", 0.82),
-          backdropFilter: "blur(5px)",
-          borderRadius: 2,
-          padding: 3,
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3)",
+          backgroundColor: alpha("#140507", 0.72),
+          backdropFilter: "blur(8px)",
+          borderRadius: 3,
+          padding: { xs: 2, md: 3 },
+          boxShadow: "0 18px 50px rgba(0, 0, 0, 0.34)",
           color: "#fff",
           "& .MuiAlert-standardInfo": {
             backgroundColor: alpha("#d32f2f", 0.16),
@@ -695,36 +684,22 @@ const CustomerDashboard = () => {
           },
         }}
       >
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            mb: 3,
-            textAlign: "center",
-          }}
-        >
-          <Typography
-            variant="h4"
-            gutterBottom
-            className="primary-text"
-            sx={{ color: "#fff", textShadow: "2px 2px 4px rgba(0,0,0,0.5)" }}
-          >
-            <PersonIcon sx={{ mr: 1, verticalAlign: "middle" }} />
-            Customer Dashboard
-          </Typography>
+        <Box className="customer-hero">
+          <Box>
+            <Chip
+              icon={<PersonIcon />}
+              label={`Welcome${user?.name ? `, ${user.name}` : ""}`}
+              className="customer-welcome-chip"
+            />
+            <Typography variant="h4" className="customer-hero-title">
+              Customer Dashboard
+            </Typography>
+            <Typography variant="body1" className="customer-hero-subtitle">
+              Browse safari products, review your cart, and track previous orders.
+            </Typography>
+          </Box>
 
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 1.5,
-              flexWrap: "wrap",
-              width: "100%",
-              mt: 1,
-            }}
-          >
+          <Box className="customer-actions">
             <Button
               variant={activeView === "shop" ? "contained" : "outlined"}
               color="primary"
@@ -761,6 +736,36 @@ const CustomerDashboard = () => {
             </Button>
           </Box>
         </Box>
+
+        <Grid container spacing={2} className="customer-summary-grid">
+          <Grid item xs={12} sm={4}>
+            <Paper className="customer-summary-card">
+              <StoreIcon />
+              <Box>
+                <Typography variant="caption">Available Products</Typography>
+                <Typography variant="h6">{availableProducts}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Paper className="customer-summary-card">
+              <CartIcon />
+              <Box>
+                <Typography variant="caption">Items in Cart</Typography>
+                <Typography variant="h6">{cartItemCount}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Paper className="customer-summary-card">
+              <InventoryIcon />
+              <Box>
+                <Typography variant="caption">Low Stock Picks</Typography>
+                <Typography variant="h6">{lowStockProducts}</Typography>
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
 
         <div className="custom-divider"></div>
 
