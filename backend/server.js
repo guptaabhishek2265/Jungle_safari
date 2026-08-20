@@ -23,7 +23,9 @@ const io = socketIo(server, {
       const allowedOrigins = [
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://jungle-safari-souvenir-shop-o67c.vercel.app"
+        "https://jungle-safari-souvenir-shop-o67c.vercel.app",
+        "https://jungle-safari-ma1d.vercel.app",
+        "https://jungle-safari-e9on.vercel.app"
       ];
 
       if (
@@ -80,13 +82,19 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://127.0.0.1:3000",
   "https://jungle-safari-souvenir-shop-o67c.vercel.app",
-  "https://jungle-safari-ma1d.vercel.app"
+  "https://jungle-safari-ma1d.vercel.app",
+  "https://jungle-safari-e9on.vercel.app" // Added the test frontend URL
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
+
+    // Allow if origin is explicitly in the allowedOrigins array
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
     // Allow localhost for development
     if (origin.includes('localhost') || origin.includes('127.0.0.1')) {
