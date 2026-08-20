@@ -162,7 +162,7 @@
 }
 
 .product-media-wrap {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 7;
   overflow: hidden;
   position: relative;
 }
@@ -195,16 +195,16 @@
 
 .card-content {
   background-color: transparent;
-  flex: 1;
+  flex: 0 0 auto;
   transition: background-color 0.3s ease;
-  padding: 12px 18px 8px !important;
+  padding: 10px 18px 4px !important;
 }
 
 .product-card-actions {
   background-color: transparent;
   justify-content: flex-start;
-  margin-top: auto;
-  padding: 10px 18px 18px !important;
+  margin-top: 0;
+  padding: 4px 18px 14px !important;
 }
 
 .card-title {
@@ -233,7 +233,8 @@
   box-shadow: 0 6px 10px rgba(0, 0, 0, 0.2) !important;
 }
 
-.product-add-button {
+.customer-dashboard-container .product-add-button.MuiButton-contained,
+.customer-dashboard-container .product-add-button.primary-button {
   background-color: #1565c0 !important;
   border-radius: 999px !important;
   min-width: 98px !important;
@@ -241,7 +242,8 @@
   box-shadow: 0 8px 18px rgba(21, 101, 192, 0.35) !important;
 }
 
-.product-add-button:hover {
+.customer-dashboard-container .product-add-button.MuiButton-contained:hover,
+.customer-dashboard-container .product-add-button.primary-button:hover {
   background-color: #0d47a1 !important;
   box-shadow: 0 10px 22px rgba(13, 71, 161, 0.45) !important;
 }
