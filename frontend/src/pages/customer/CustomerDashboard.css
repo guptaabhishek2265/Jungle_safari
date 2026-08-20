@@ -197,13 +197,14 @@
   background-color: transparent;
   flex: 1;
   transition: background-color 0.3s ease;
-  padding: 18px !important;
+  padding: 12px 18px 8px !important;
 }
 
 .product-card-actions {
   background-color: transparent;
   justify-content: flex-start;
-  padding: 0 18px 18px !important;
+  margin-top: auto;
+  padding: 10px 18px 18px !important;
 }
 
 .card-title {
@@ -233,14 +234,16 @@
 }
 
 .product-add-button {
-  background-color: #ef5350 !important;
+  background-color: #1565c0 !important;
   border-radius: 999px !important;
   min-width: 98px !important;
   padding: 7px 14px !important;
+  box-shadow: 0 8px 18px rgba(21, 101, 192, 0.35) !important;
 }
 
 .product-add-button:hover {
-  background-color: #c62828 !important;
+  background-color: #0d47a1 !important;
+  box-shadow: 0 10px 22px rgba(13, 71, 161, 0.45) !important;
 }
 
 .secondary-button {
