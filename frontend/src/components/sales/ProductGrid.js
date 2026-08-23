@@ -210,6 +210,18 @@ const ProductGrid = ({ products, loading, onAddToCart }) => {
                   sx={{ objectFit: "contain", bgcolor: "#f5f5f5" }}
                 />
                 <CardContent sx={{ flexGrow: 1 }}>
+                  <Box mb={2}>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      fullWidth
+                      startIcon={<AddShoppingCartIcon />}
+                      disabled={product.stock <= 0}
+                      onClick={() => handleAddToCart(product)}
+                    >
+                      Add to Cart
+                    </Button>
+                  </Box>
                   <Typography variant="h6" component="div" noWrap>
                     {product.name}
                   </Typography>
@@ -234,18 +246,6 @@ const ProductGrid = ({ products, loading, onAddToCart }) => {
                       size="small"
                       variant="outlined"
                     />
-                  </Box>
-                  <Box mt={2}>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      fullWidth
-                      startIcon={<AddShoppingCartIcon />}
-                      disabled={product.stock <= 0}
-                      onClick={() => handleAddToCart(product)}
-                    >
-                      Add to Cart
-                    </Button>
                   </Box>
                 </CardContent>
               </Card>

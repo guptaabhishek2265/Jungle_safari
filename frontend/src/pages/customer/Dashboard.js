@@ -364,6 +364,18 @@ const CustomerDashboard = () => {
                   className="product-category-chip"
                 />
               </Box>
+              <CardActions className="product-card-actions">
+                <Button
+                  variant="contained"
+                  color="primary"
+                  startIcon={<CartIcon />}
+                  onClick={() => handleAddToCart(product)}
+                  disabled={product.stock === 0}
+                  className="primary-button product-add-button"
+                >
+                  {product.stock === 0 ? "Out of Stock" : "Add"}
+                </Button>
+              </CardActions>
               <CardContent className="card-content">
                 <Typography
                   variant="h6"
@@ -394,18 +406,6 @@ const CustomerDashboard = () => {
                   />
                 </Box>
               </CardContent>
-              <CardActions className="product-card-actions">
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<CartIcon />}
-                  onClick={() => handleAddToCart(product)}
-                  disabled={product.stock === 0}
-                  className="primary-button product-add-button"
-                >
-                  {product.stock === 0 ? "Out of Stock" : "Add"}
-                </Button>
-              </CardActions>
             </Card>
           </Grid>
         ))}
