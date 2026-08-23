@@ -195,16 +195,15 @@
 
 .card-content {
   background-color: transparent;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
   transition: background-color 0.3s ease;
-  padding: 10px 18px 4px !important;
+  padding: 4px 18px 14px !important;
 }
 
 .product-card-actions {
   background-color: transparent;
   justify-content: flex-end;
-  margin-top: auto;
-  padding: 10px 18px 18px !important;
+  padding: 10px 18px 8px !important;
 }
 
 .card-title {
