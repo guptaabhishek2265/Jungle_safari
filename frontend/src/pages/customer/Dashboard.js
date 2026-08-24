@@ -363,7 +363,7 @@ const CustomerDashboard = () => {
                   className="product-category-chip"
                 />
               </Box>
-              <Box sx={{ display: "flex", justifyContent: "flex-end", px: 2, pt: 1.5 }}>
+              <Box sx={{ display: "flex", justifyContent: "flex-start", px: 2, pt: 1.5 }}>
                 <Button
                   variant="contained"
                   color="primary"
