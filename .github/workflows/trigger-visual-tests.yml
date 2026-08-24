@@ -30,8 +30,6 @@ jobs:
         with:
           repository: guptaabhishek2265/Ai_visual_Testing
           path: Ai_visual_Testing
-          # Use your token secret to securely clone the testing repo
-          token: ${{ secrets.VISUAL_TESTING_TOKEN }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
