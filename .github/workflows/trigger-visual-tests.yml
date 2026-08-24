@@ -10,25 +10,29 @@ jobs:
   visual-test:
     runs-on: ubuntu-latest
     env:
-      # Optional: Make sure compare.py fails the CI job if a difference is detected
       FAIL_ON_VISUAL_DIFF: "true"
+      # AI Model key
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      
+      # Map your GitHub Secrets to the variables expected by steps.txt
+      ACCOUNT_PROJECT_3A243362372F_CUSTOMER_PASSWORD: ${{ secrets.CUSTOMER_PASSWORD }}
+      ACCOUNT_PROJECT_3A243362372F_INVENTORY_MANAGER_PASSWORD: ${{ secrets.INVENTORY_PASSWORD }}
+      
+      ACCOUNT_PROJECT_3A243362372F_CUSTOMER_EMAIL: "customer@example.com" 
+      ACCOUNT_PROJECT_3A243362372F_INVENTORY_MANAGER_EMAIL: "inventory@example.com" 
 
     steps:
-      # 1. Checkout the target application (Jungle_Safari)
       - name: Checkout Application
         uses: actions/checkout@v4
 
-      # 2. Checkout the testing framework (Ai_visual_Testing) into a subfolder
       - name: Checkout Testing Framework
         uses: actions/checkout@v4
         with:
           repository: guptaabhishek2265/Ai_visual_Testing
           path: Ai_visual_Testing
-          # If Ai_visual_Testing is private, you need a Personal Access Token (PAT)
-          # token: ${{ secrets.VISUAL_TESTING_PAT }}
+          # Use your token secret to securely clone the testing repo
+          token: ${{ secrets.VISUAL_TESTING_TOKEN }}
 
-      # 3. Setup environments
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -39,13 +43,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Setup Java (Required for Allure Report)
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "17"
 
-      # 4. Install Dependencies
       - name: Install Testing Dependencies
         working-directory: ./Ai_visual_Testing
         run: |
@@ -53,20 +56,15 @@ jobs:
           npx playwright install --with-deps chromium
           pip install opencv-python scikit-image numpy requests
 
-      # 5. Run the Visual Tests (Using your SaaS engine in the GitHub Runner)
       - name: Execute Visual Tests
         working-directory: ./Ai_visual_Testing
-        run: node utils/testRunner.js # Adjust this to the specific command that triggers tests directly (without starting the web server)
-        # Note: Depending on your exact architecture, you may run the tests using Playwright directly:
-        # npx playwright test --grep @regression
+        run: node utils/testRunner.js
 
-      # 6. Generate Allure Report
       - name: Generate Allure Report
         if: always()
         working-directory: ./Ai_visual_Testing
         run: npx allure generate allure-results --clean -o allure-report
 
-      # 7. Upload Results as Artifacts (This is where you see them in GitHub!)
       - name: Upload Allure Report
         if: always()
         uses: actions/upload-artifact@v4
