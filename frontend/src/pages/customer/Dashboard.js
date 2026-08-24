@@ -376,16 +376,6 @@ const CustomerDashboard = () => {
                   {product.description || `Quality ${product.category} item`}
                 </Typography>
                 <Box display="flex" justifyContent="space-between" alignItems="center">
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<CartIcon />}
-                    onClick={() => handleAddToCart(product)}
-                    disabled={product.stock === 0}
-                    className="primary-button product-add-button"
-                  >
-                    {product.stock === 0 ? "Out of Stock" : "Add"}
-                  </Button>
                   <Box>
                     <Typography variant="h6" className="card-price">
                       {formatCurrency(product.price)}
@@ -403,6 +393,16 @@ const CustomerDashboard = () => {
                       variant="outlined"
                     />
                   </Box>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<CartIcon />}
+                    onClick={() => handleAddToCart(product)}
+                    disabled={product.stock === 0}
+                    className="primary-button product-add-button"
+                  >
+                    {product.stock === 0 ? "Out of Stock" : "Add"}
+                  </Button>
                 </Box>
               </CardContent>
             </Card>
