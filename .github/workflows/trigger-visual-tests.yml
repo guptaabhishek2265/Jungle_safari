@@ -10,6 +10,9 @@ jobs:
   visual-test:
     runs-on: ubuntu-latest
     env:
+      # The base URL of your application that Playwright will test against
+      APP_URL: "https://jungle-safari-YOUR-URL.vercel.app"
+      
       FAIL_ON_VISUAL_DIFF: "true"
       # AI Model key
       GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
