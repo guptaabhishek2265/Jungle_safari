@@ -363,18 +363,6 @@ const CustomerDashboard = () => {
                   className="product-category-chip"
                 />
               </Box>
-              <Box sx={{ display: "flex", justifyContent: "flex-end", px: 2, pt: 1.5 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  startIcon={<CartIcon />}
-                  onClick={() => handleAddToCart(product)}
-                  disabled={product.stock === 0}
-                  className="primary-button product-add-button"
-                >
-                  {product.stock === 0 ? "Out of Stock" : "Add"}
-                </Button>
-              </Box>
               <CardContent className="card-content">
                 <Typography
                   variant="h6"
@@ -387,7 +375,7 @@ const CustomerDashboard = () => {
                 <Typography variant="body2" className="text-light" gutterBottom>
                   {product.description || `Quality ${product.category} item`}
                 </Typography>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                   <Box>
                     <Typography variant="h6" className="card-price">
                       {formatCurrency(product.price)}
@@ -406,6 +394,18 @@ const CustomerDashboard = () => {
                     />
                   </Box>
                 </Box>
+                <Button
+                  variant="contained"
+                  fullWidth
+                  color="primary"
+                  startIcon={<CartIcon />}
+                  onClick={() => handleAddToCart(product)}
+                  disabled={product.stock === 0}
+                  className="primary-button product-add-button"
+                  sx={{ mt: 1 }}
+                >
+                  {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                </Button>
               </CardContent>
             </Card>
           </Grid>
