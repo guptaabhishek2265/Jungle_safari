@@ -123,6 +123,7 @@ const SupplierManagement = () => {
   const handleCloseEditDialog = () => {
     setEditDialogOpen(false);
     setCurrentSupplier(null);
+    console.log("hello wolrd");
   };
 
   const handleCloseDeleteDialog = () => {
