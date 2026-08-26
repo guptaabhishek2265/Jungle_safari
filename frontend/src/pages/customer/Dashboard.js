@@ -387,7 +387,7 @@ const CustomerDashboard = () => {
                 <Typography variant="body2" className="text-light" gutterBottom>
                   {product.description || `Quality ${product.category} item`}
                 </Typography>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                   <Box>
                     <Typography variant="h6" className="card-price">
                       {formatCurrency(product.price)}

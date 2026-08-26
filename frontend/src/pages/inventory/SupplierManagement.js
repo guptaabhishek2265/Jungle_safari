@@ -119,7 +119,7 @@ const SupplierManagement = () => {
     setAddDialogOpen(false);
     setNewSupplier(emptySupplier);
   };
-
+  console.log("hello world!");
   const handleCloseEditDialog = () => {
     setEditDialogOpen(false);
     setCurrentSupplier(null);
