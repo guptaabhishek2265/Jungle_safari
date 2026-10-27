@@ -363,7 +363,10 @@ const CustomerDashboard = () => {
                   className="product-category-chip"
                 />
               </Box>
-              <CardContent className="card-content">
+              <CardContent
+                className="card-content"
+                sx={{ display: "flex", flexDirection: "column", height: "100%" }}
+              >
                 <Typography
                   variant="h6"
                   component="div"
@@ -394,7 +397,7 @@ const CustomerDashboard = () => {
                     />
                   </Box>
                 </Box>
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 1 }}>
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: "auto", pt: 1 }}>
                   <Button
                     variant="contained"
                     color="primary"
