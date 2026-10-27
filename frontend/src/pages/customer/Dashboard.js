@@ -375,6 +375,18 @@ const CustomerDashboard = () => {
                 >
                   {product.name}
                 </Typography>
+                <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    startIcon={<CartIcon />}
+                    onClick={() => handleAddToCart(product)}
+                    disabled={product.stock === 0}
+                    className="primary-button product-add-button"
+                  >
+                    {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
+                  </Button>
+                </Box>
                 <Typography variant="body2" className="text-light" gutterBottom>
                   {product.description || `Quality ${product.category} item`}
                 </Typography>
@@ -396,18 +408,6 @@ const CustomerDashboard = () => {
                       variant="outlined"
                     />
                   </Box>
-                </Box>
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: "auto", pt: 1 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    startIcon={<CartIcon />}
-                    onClick={() => handleAddToCart(product)}
-                    disabled={product.stock === 0}
-                    className="primary-button product-add-button"
-                  >
-                    {product.stock === 0 ? "Out of Stock" : "Add to Cart"}
-                  </Button>
                 </Box>
               </CardContent>
             </Card>
